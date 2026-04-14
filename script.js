@@ -1,0 +1,272 @@
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const statusEl = document.getElementById('status');
+
+const COLS = 12;
+const ROWS = 16;
+const TILE = 40;
+const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
+const SNIPER_LOCK_DISTANCE = 10;
+const SNIPER_FOLLOW_SPEED = 0.018;
+const SNIPER_AIM_SECONDS = 1;
+const BUILD_TAG = '1.0.0';
+
+let best = Number(localStorage.getItem('crossyBest') || 0);
+bestEl.textContent = best;
+
+const laneTypes = Array.from({ length: ROWS }, (_, row) => {
+  if (SAFE_ROWS.has(row)) return 'safe';
+  return row % 2 === 0 ? 'road' : 'grass';
+});
+
+let player;
+let cars;
+let score;
+let gameOver;
+let sniper;
+let lastTime = 0;
+
+function getPlayerCenter() {
+  return {
+    x: player.col * TILE + TILE / 2,
+    y: player.row * TILE + TILE / 2
+  };
+}
+
+function resetGame() {
+  player = { col: Math.floor(COLS / 2), row: ROWS - 1 };
+  cars = [];
+  score = 0;
+  gameOver = false;
+  sniper = {
+    x: canvas.width / 2,
+    y: 80,
+    aimTime: 0,
+    firing: false,
+    shotTimer: 0,
+    shotLine: null
+  };
+  statusEl.textContent = '小心来车，也别让狙击手锁定你。';
+  buildCars();
+  updateHud();
+}
+
+function buildCars() {
+  cars = [];
+  for (let row = 0; row < ROWS; row++) {
+    if (laneTypes[row] !== 'road') continue;
+    const dir = row % 4 === 0 ? 1 : -1;
+    const speed = 1.2 + (ROWS - row) * 0.03;
+    for (let i = 0; i < 3; i++) {
+      cars.push({
+        row,
+        x: (i * 180 + row * 37) % (canvas.width + 120) - 60,
+        width: 54,
+        height: 26,
+        dir,
+        speed,
+        color: dir > 0 ? '#ef4444' : '#3b82f6'
+      });
+    }
+  }
+}
+
+function updateHud() {
+  scoreEl.textContent = score;
+  bestEl.textContent = best;
+}
+
+function movePlayer(dx, dy) {
+  if (gameOver) return;
+  const nextCol = Math.max(0, Math.min(COLS - 1, player.col + dx));
+  const nextRow = Math.max(0, Math.min(ROWS - 1, player.row + dy));
+  if (nextCol === player.col && nextRow === player.row) return;
+  player.col = nextCol;
+  if (nextRow < player.row) {
+    score += 1;
+    if (score > best) {
+      best = score;
+      localStorage.setItem('crossyBest', String(best));
+    }
+  }
+  player.row = nextRow;
+  updateHud();
+}
+
+window.addEventListener('keydown', (event) => {
+  const key = event.key.toLowerCase();
+  if (key === 'arrowup' || key === 'w') movePlayer(0, -1);
+  else if (key === 'arrowdown' || key === 's') movePlayer(0, 1);
+  else if (key === 'arrowleft' || key === 'a') movePlayer(-1, 0);
+  else if (key === 'arrowright' || key === 'd') movePlayer(1, 0);
+  else if (key === 'r') resetGame();
+});
+
+function updateSniper(deltaSeconds) {
+  const target = getPlayerCenter();
+  sniper.x += (target.x - sniper.x) * SNIPER_FOLLOW_SPEED * deltaSeconds * 60;
+  sniper.y += (target.y - sniper.y) * SNIPER_FOLLOW_SPEED * deltaSeconds * 60;
+
+  const distance = Math.hypot(target.x - sniper.x, target.y - sniper.y);
+
+  if (!sniper.firing) {
+    if (distance <= SNIPER_LOCK_DISTANCE) {
+      sniper.aimTime += deltaSeconds;
+      const remaining = Math.max(0, SNIPER_AIM_SECONDS - sniper.aimTime).toFixed(1);
+      statusEl.textContent = `狙击手已锁定，${remaining} 秒后开枪，快躲开！`;
+      if (sniper.aimTime >= SNIPER_AIM_SECONDS) {
+        sniper.firing = true;
+        sniper.shotTimer = 0.15;
+        sniper.shotLine = { fromX: sniper.x, fromY: sniper.y, toX: target.x, toY: target.y };
+        gameOver = true;
+        statusEl.textContent = '你被狙击手击中了，按 R 重新开始。';
+      }
+    } else {
+      sniper.aimTime = 0;
+    }
+  } else if (sniper.shotTimer > 0) {
+    sniper.shotTimer -= deltaSeconds;
+  }
+}
+
+function updateCars() {
+  for (const car of cars) {
+    car.x += car.speed * car.dir;
+    if (car.dir > 0 && car.x > canvas.width + 70) car.x = -80;
+    if (car.dir < 0 && car.x < -80) car.x = canvas.width + 70;
+
+    if (car.row === player.row) {
+      const px = player.col * TILE + TILE / 2;
+      const py = player.row * TILE + TILE / 2;
+      if (
+        px > car.x - car.width / 2 &&
+        px < car.x + car.width / 2 &&
+        py > car.row * TILE + 6 &&
+        py < car.row * TILE + TILE - 6
+      ) {
+        gameOver = true;
+        statusEl.textContent = '撞到了，按 R 重新开始。';
+      }
+    }
+  }
+}
+
+function update(deltaSeconds) {
+  if (!gameOver) {
+    updateCars();
+    updateSniper(deltaSeconds);
+
+    if (player.row === 0) {
+      gameOver = true;
+      statusEl.textContent = '成功过马路了，按 R 再来一局。';
+    }
+  } else if (sniper.shotTimer > 0) {
+    sniper.shotTimer -= deltaSeconds;
+  }
+}
+
+function drawRow(row) {
+  const y = row * TILE;
+  if (laneTypes[row] === 'road') {
+    ctx.fillStyle = '#4b5563';
+    ctx.fillRect(0, y, canvas.width, TILE);
+    ctx.strokeStyle = '#fbbf24';
+    ctx.setLineDash([14, 14]);
+    ctx.beginPath();
+    ctx.moveTo(0, y + TILE / 2);
+    ctx.lineTo(canvas.width, y + TILE / 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  } else {
+    ctx.fillStyle = row === 0 ? '#86efac' : '#65a30d';
+    ctx.fillRect(0, y, canvas.width, TILE);
+  }
+}
+
+function drawCars() {
+  for (const car of cars) {
+    const y = car.row * TILE + 7;
+    ctx.fillStyle = car.color;
+    ctx.fillRect(car.x - car.width / 2, y, car.width, car.height);
+    ctx.fillStyle = '#111827';
+    ctx.fillRect(car.x - 18, y + 5, 10, 8);
+    ctx.fillRect(car.x + 8, y + 5, 10, 8);
+  }
+}
+
+function drawPlayer() {
+  const x = player.col * TILE + 6;
+  const y = player.row * TILE + 6;
+  ctx.fillStyle = '#fde047';
+  ctx.fillRect(x, y, TILE - 12, TILE - 12);
+  ctx.fillStyle = '#111827';
+  ctx.fillRect(x + 8, y + 8, 5, 5);
+  ctx.fillRect(x + 21, y + 8, 5, 5);
+}
+
+function drawSniper() {
+  const pulse = 1 + Math.sin(Date.now() / 120) * 0.15;
+  ctx.save();
+  ctx.strokeStyle = sniper.aimTime > 0 ? '#ff1f1f' : '#ff4d4f';
+  ctx.lineWidth = 4;
+  ctx.shadowColor = 'rgba(255, 0, 0, 0.55)';
+  ctx.shadowBlur = 14;
+  ctx.beginPath();
+  ctx.arc(sniper.x, sniper.y, 18 * pulse, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(sniper.x, sniper.y, 7 * pulse, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(sniper.x - 26, sniper.y);
+  ctx.lineTo(sniper.x + 26, sniper.y);
+  ctx.moveTo(sniper.x, sniper.y - 26);
+  ctx.lineTo(sniper.x, sniper.y + 26);
+  ctx.stroke();
+  ctx.restore();
+
+  if (sniper.shotLine && sniper.shotTimer > 0) {
+    ctx.save();
+    ctx.strokeStyle = '#ff0000';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(sniper.shotLine.fromX, sniper.shotLine.fromY);
+    ctx.lineTo(sniper.shotLine.toX, sniper.shotLine.toY);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawVersionTag() {
+  ctx.save();
+  ctx.fillStyle = 'rgba(17, 24, 39, 0.72)';
+  ctx.fillRect(canvas.width - 110, canvas.height - 34, 98, 22);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '14px Arial';
+  ctx.textAlign = 'right';
+  ctx.fillText(`v${BUILD_TAG}`, canvas.width - 18, canvas.height - 18);
+  ctx.restore();
+}
+
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let row = 0; row < ROWS; row++) drawRow(row);
+  drawCars();
+  drawPlayer();
+  drawSniper();
+  drawVersionTag();
+}
+
+function loop(timestamp = 0) {
+  const deltaSeconds = Math.min(0.05, (timestamp - lastTime) / 1000 || 0.016);
+  lastTime = timestamp;
+  update(deltaSeconds);
+  render();
+  requestAnimationFrame(loop);
+}
+
+statusEl.textContent = `小心来车，也别让狙击手锁定你。当前版本: ${BUILD_TAG}`;
+resetGame();
+loop();
