@@ -11,7 +11,8 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '2.1.1';
+const BUILD_TAG = '2.1.2';
+const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 
 const DIFFICULTIES = {
   easy: { label: '简单', carMultiplier: 1, sniperMove: 1, aimSeconds: 1, spawnDelay: 0 },
@@ -39,6 +40,8 @@ let elapsedTime = 0;
 let resultText = '';
 let resultStyle = 'lose';
 let killEffect = null;
+const sniperDeathImage = new Image();
+sniperDeathImage.src = SNIPER_DEATH_GIF;
 
 function getDifficultyConfig() {
   return DIFFICULTIES[currentDifficulty];
@@ -124,9 +127,11 @@ function triggerLose(message) {
   killEffect = {
     x: target.x,
     y: target.y,
-    radius: 10,
+    width: 96,
+    height: 96,
     alpha: 1,
-    alive: true
+    alive: true,
+    mode: 'gif'
   };
 }
 
@@ -237,8 +242,7 @@ function updateCars(deltaSeconds) {
 
 function updateKillEffect(deltaSeconds) {
   if (!killEffect || !killEffect.alive) return;
-  killEffect.radius += 180 * deltaSeconds;
-  killEffect.alpha -= 1.8 * deltaSeconds;
+  killEffect.alpha -= 0.9 * deltaSeconds;
   if (killEffect.alpha <= 0) {
     killEffect.alive = false;
   }
@@ -339,14 +343,21 @@ function drawKillEffect() {
   if (!killEffect || !killEffect.alive) return;
   ctx.save();
   ctx.globalAlpha = Math.max(0, killEffect.alpha);
-  const gradient = ctx.createRadialGradient(killEffect.x, killEffect.y, 0, killEffect.x, killEffect.y, killEffect.radius);
-  gradient.addColorStop(0, 'rgba(255, 245, 245, 0.95)');
-  gradient.addColorStop(0.35, 'rgba(255, 80, 80, 0.8)');
-  gradient.addColorStop(1, 'rgba(120, 0, 0, 0)');
-  ctx.fillStyle = gradient;
-  ctx.beginPath();
-  ctx.arc(killEffect.x, killEffect.y, killEffect.radius, 0, Math.PI * 2);
-  ctx.fill();
+  if (sniperDeathImage.complete) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(
+      sniperDeathImage,
+      killEffect.x - killEffect.width / 2,
+      killEffect.y - killEffect.height / 2,
+      killEffect.width,
+      killEffect.height
+    );
+  } else {
+    ctx.fillStyle = 'rgba(255, 230, 120, 0.85)';
+    ctx.beginPath();
+    ctx.arc(killEffect.x, killEffect.y, 26, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
 }
 
