@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>过马路（经典版）</title>
-  <link rel="stylesheet" href="styles.css?v=200" />
+  <link rel="stylesheet" href="styles.css?v=300" />
 </head>
 <body>
   <div class="wrap">
@@ -22,14 +22,46 @@
         <option value="inferno">炼狱</option>
       </select>
     </div>
-    <div class="hud">
-      <span>分数: <strong id="score">0</strong></span>
-      <span>最佳: <strong id="best">0</strong></span>
-      <span>计时: <strong id="timer">0.00s</strong></span>
+    <div class="layout">
+      <div class="game-area">
+        <div class="hud">
+          <span>分数: <strong id="score">0</strong></span>
+          <span>最佳: <strong id="best">0</strong></span>
+          <span>计时: <strong id="timer">0.00s</strong></span>
+        </div>
+        <canvas id="game" width="480" height="640"></canvas>
+        <p id="status">小心来车，尽量往上走。</p>
+      </div>
+      <aside class="changelog">
+        <h2>更新日志</h2>
+        <div class="log-block">
+          <h3>v2.1.0</h3>
+          <ul>
+            <li>新增右上角更新日志面板</li>
+            <li>狙击手会在开局 5 秒内随机生成于任意坐标后发起攻击</li>
+            <li>新增狙击击杀特效</li>
+            <li>胜利与失败时新增屏幕中央 3D 大字提示</li>
+          </ul>
+        </div>
+        <div class="log-block">
+          <h3>v2.0.0</h3>
+          <ul>
+            <li>新增四档难度</li>
+            <li>新增通关计时器</li>
+            <li>标题更新为过马路（经典版）</li>
+          </ul>
+        </div>
+        <div class="log-block">
+          <h3>v1.0.0</h3>
+          <ul>
+            <li>创建新版仓库与网页发布</li>
+            <li>加入狙击手追踪机制</li>
+            <li>加入版本号显示</li>
+          </ul>
+        </div>
+      </aside>
     </div>
-    <canvas id="game" width="480" height="640"></canvas>
-    <p id="status">小心来车，尽量往上走。</p>
   </div>
-  <script src="script.js?v=200"></script>
+  <script src="script.js?v=300"></script>
 </body>
 </html>

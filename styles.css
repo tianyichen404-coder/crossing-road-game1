@@ -28,12 +28,44 @@ h1 { margin: 0; }
   padding: 6px 10px;
   font-size: 15px;
 }
+.layout {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.game-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
 .hud {
   display: flex;
   gap: 20px;
   font-size: 18px;
   flex-wrap: wrap;
   justify-content: center;
+}
+.changelog {
+  width: 280px;
+  max-width: 100%;
+  background: rgba(255, 255, 255, 0.84);
+  border: 2px solid #334155;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+}
+.changelog h2, .changelog h3 {
+  margin: 0 0 8px;
+}
+.log-block {
+  margin-bottom: 12px;
+}
+.log-block ul {
+  margin: 0;
+  padding-left: 18px;
 }
 canvas {
   border: 4px solid #1f2937;
