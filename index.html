@@ -6,20 +6,30 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>过马路小游戏</title>
-  <link rel="stylesheet" href="styles.css?v=103" />
+  <title>过马路（经典版）</title>
+  <link rel="stylesheet" href="styles.css?v=200" />
 </head>
 <body>
   <div class="wrap">
-    <h1>过马路</h1>
+    <h1>过马路（经典版）</h1>
     <p class="hint">方向键 / WASD 移动，R 重新开始</p>
+    <div class="controls">
+      <label for="difficulty">难度</label>
+      <select id="difficulty">
+        <option value="easy">简单</option>
+        <option value="hard">困难</option>
+        <option value="extreme">极难</option>
+        <option value="inferno">炼狱</option>
+      </select>
+    </div>
     <div class="hud">
       <span>分数: <strong id="score">0</strong></span>
       <span>最佳: <strong id="best">0</strong></span>
+      <span>计时: <strong id="timer">0.00s</strong></span>
     </div>
     <canvas id="game" width="480" height="640"></canvas>
     <p id="status">小心来车，尽量往上走。</p>
   </div>
-  <script src="script.js?v=103"></script>
+  <script src="script.js?v=200"></script>
 </body>
 </html>

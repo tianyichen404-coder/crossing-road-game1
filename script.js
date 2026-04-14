@@ -2,18 +2,26 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const bestEl = document.getElementById('best');
+const timerEl = document.getElementById('timer');
 const statusEl = document.getElementById('status');
+const difficultyEl = document.getElementById('difficulty');
 
 const COLS = 12;
 const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const SNIPER_FOLLOW_SPEED = 0.018;
-const SNIPER_AIM_SECONDS = 1;
-const BUILD_TAG = '1.0.0';
+const BUILD_TAG = '2.0.0';
+
+const DIFFICULTIES = {
+  easy: { label: '简单', carMultiplier: 1, sniperMove: 1, aimSeconds: 1 },
+  hard: { label: '困难', carMultiplier: 2, sniperMove: 3, aimSeconds: 0.5 },
+  extreme: { label: '极难', carMultiplier: 4, sniperMove: 5, aimSeconds: 0.3 },
+  inferno: { label: '炼狱', carMultiplier: 8, sniperMove: 7, aimSeconds: 0 }
+};
 
 let best = Number(localStorage.getItem('crossyBest') || 0);
+let currentDifficulty = difficultyEl.value;
 bestEl.textContent = best;
 
 const laneTypes = Array.from({ length: ROWS }, (_, row) => {
@@ -27,6 +35,12 @@ let score;
 let gameOver;
 let sniper;
 let lastTime = 0;
+let elapsedTime = 0;
+let runFinished = false;
+
+function getDifficultyConfig() {
+  return DIFFICULTIES[currentDifficulty];
+}
 
 function getPlayerCenter() {
   return {
@@ -35,30 +49,43 @@ function getPlayerCenter() {
   };
 }
 
+function updateHud() {
+  scoreEl.textContent = score;
+  bestEl.textContent = best;
+  timerEl.textContent = `${elapsedTime.toFixed(2)}s`;
+}
+
 function resetGame() {
+  const diff = getDifficultyConfig();
   player = { col: Math.floor(COLS / 2), row: ROWS - 1 };
   cars = [];
   score = 0;
+  elapsedTime = 0;
   gameOver = false;
+  runFinished = false;
   sniper = {
     x: canvas.width / 2,
     y: 80,
     aimTime: 0,
     firing: false,
     shotTimer: 0,
-    shotLine: null
+    shotLine: null,
+    moveFactor: diff.sniperMove,
+    aimSeconds: diff.aimSeconds
   };
-  statusEl.textContent = '小心来车，也别让狙击手锁定你。';
+  statusEl.textContent = `当前难度：${diff.label}。小心来车，也别让狙击手锁定你。`;
   buildCars();
   updateHud();
 }
 
 function buildCars() {
   cars = [];
+  const diff = getDifficultyConfig();
   for (let row = 0; row < ROWS; row++) {
     if (laneTypes[row] !== 'road') continue;
     const dir = row % 4 === 0 ? 1 : -1;
-    const speed = 1.2 + (ROWS - row) * 0.03;
+    const baseSpeed = 1.2 + (ROWS - row) * 0.03;
+    const speed = baseSpeed * diff.carMultiplier;
     for (let i = 0; i < 3; i++) {
       cars.push({
         row,
@@ -71,11 +98,6 @@ function buildCars() {
       });
     }
   }
-}
-
-function updateHud() {
-  scoreEl.textContent = score;
-  bestEl.textContent = best;
 }
 
 function movePlayer(dx, dy) {
@@ -104,21 +126,35 @@ window.addEventListener('keydown', (event) => {
   else if (key === 'r') resetGame();
 });
 
+difficultyEl.addEventListener('change', () => {
+  currentDifficulty = difficultyEl.value;
+  resetGame();
+});
+
 function updateSniper(deltaSeconds) {
   const target = getPlayerCenter();
-  sniper.x += (target.x - sniper.x) * SNIPER_FOLLOW_SPEED * deltaSeconds * 60;
-  sniper.y += (target.y - sniper.y) * SNIPER_FOLLOW_SPEED * deltaSeconds * 60;
+  const followSpeed = 0.018 * sniper.moveFactor;
+  sniper.x += (target.x - sniper.x) * followSpeed * deltaSeconds * 60;
+  sniper.y += (target.y - sniper.y) * followSpeed * deltaSeconds * 60;
 
   const distance = Math.hypot(target.x - sniper.x, target.y - sniper.y);
 
   if (!sniper.firing) {
     if (distance <= SNIPER_LOCK_DISTANCE) {
       sniper.aimTime += deltaSeconds;
-      const remaining = Math.max(0, SNIPER_AIM_SECONDS - sniper.aimTime).toFixed(1);
-      statusEl.textContent = `狙击手已锁定，${remaining} 秒后开枪，快躲开！`;
-      if (sniper.aimTime >= SNIPER_AIM_SECONDS) {
+      if (sniper.aimSeconds === 0) {
         sniper.firing = true;
-        sniper.shotTimer = 0.15;
+        sniper.shotTimer = 0.18;
+        sniper.shotLine = { fromX: sniper.x, fromY: sniper.y, toX: target.x, toY: target.y };
+        gameOver = true;
+        statusEl.textContent = '炼狱狙击瞬间命中，你已经死亡。按 R 重新开始。';
+        return;
+      }
+      const remaining = Math.max(0, sniper.aimSeconds - sniper.aimTime).toFixed(1);
+      statusEl.textContent = `狙击手已锁定，${remaining} 秒后开枪，快躲开！`;
+      if (sniper.aimTime >= sniper.aimSeconds) {
+        sniper.firing = true;
+        sniper.shotTimer = 0.18;
         sniper.shotLine = { fromX: sniper.x, fromY: sniper.y, toX: target.x, toY: target.y };
         gameOver = true;
         statusEl.textContent = '你被狙击手击中了，按 R 重新开始。';
@@ -131,9 +167,9 @@ function updateSniper(deltaSeconds) {
   }
 }
 
-function updateCars() {
+function updateCars(deltaSeconds) {
   for (const car of cars) {
-    car.x += car.speed * car.dir;
+    car.x += car.speed * car.dir * deltaSeconds * 60;
     if (car.dir > 0 && car.x > canvas.width + 70) car.x = -80;
     if (car.dir < 0 && car.x < -80) car.x = canvas.width + 70;
 
@@ -155,13 +191,17 @@ function updateCars() {
 
 function update(deltaSeconds) {
   if (!gameOver) {
-    updateCars();
+    elapsedTime += deltaSeconds;
+    updateCars(deltaSeconds);
     updateSniper(deltaSeconds);
 
     if (player.row === 0) {
       gameOver = true;
-      statusEl.textContent = '成功过马路了，按 R 再来一局。';
+      runFinished = true;
+      statusEl.textContent = `成功过马路了，用时 ${elapsedTime.toFixed(2)} 秒，按 R 再来一局。`;
     }
+
+    updateHud();
   } else if (sniper.shotTimer > 0) {
     sniper.shotTimer -= deltaSeconds;
   }
@@ -267,6 +307,6 @@ function loop(timestamp = 0) {
   requestAnimationFrame(loop);
 }
 
-statusEl.textContent = `小心来车，也别让狙击手锁定你。当前版本: ${BUILD_TAG}`;
+statusEl.textContent = `当前难度：${getDifficultyConfig().label}。小心来车，也别让狙击手锁定你。当前版本: ${BUILD_TAG}`;
 resetGame();
 loop();
