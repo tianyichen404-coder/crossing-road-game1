@@ -11,14 +11,13 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const SNIPER_SPAWN_DELAY = 5;
-const BUILD_TAG = '2.1.0';
+const BUILD_TAG = '2.1.1';
 
 const DIFFICULTIES = {
-  easy: { label: '简单', carMultiplier: 1, sniperMove: 1, aimSeconds: 1 },
-  hard: { label: '困难', carMultiplier: 2, sniperMove: 3, aimSeconds: 0.5 },
-  extreme: { label: '极难', carMultiplier: 4, sniperMove: 5, aimSeconds: 0.3 },
-  inferno: { label: '炼狱', carMultiplier: 8, sniperMove: 7, aimSeconds: 0 }
+  easy: { label: '简单', carMultiplier: 1, sniperMove: 1, aimSeconds: 1, spawnDelay: 0 },
+  hard: { label: '困难', carMultiplier: 2, sniperMove: 3, aimSeconds: 0.5, spawnDelay: 3 },
+  extreme: { label: '极难', carMultiplier: 4, sniperMove: 5, aimSeconds: 0.3, spawnDelay: 5 },
+  inferno: { label: '炼狱', carMultiplier: 8, sniperMove: 7, aimSeconds: 0, spawnDelay: 6 }
 };
 
 let best = Number(localStorage.getItem('crossyBest') || 0);
@@ -84,10 +83,12 @@ function resetGame() {
     shotLine: null,
     moveFactor: diff.sniperMove,
     aimSeconds: diff.aimSeconds,
-    spawned: false,
-    spawnCountdown: SNIPER_SPAWN_DELAY
+    spawned: diff.spawnDelay === 0,
+    spawnCountdown: diff.spawnDelay
   };
-  statusEl.textContent = `当前难度：${diff.label}。狙击手会在 5 秒内随机现身。`;
+  statusEl.textContent = diff.spawnDelay === 0
+    ? `当前难度：${diff.label}。狙击手已在开局出现。`
+    : `当前难度：${diff.label}。狙击手会在 ${diff.spawnDelay} 秒后随机现身。`;
   buildCars();
   updateHud();
 }
@@ -400,6 +401,9 @@ function loop(timestamp = 0) {
   requestAnimationFrame(loop);
 }
 
-statusEl.textContent = `当前难度：${getDifficultyConfig().label}。狙击手会在 5 秒内随机现身。当前版本: ${BUILD_TAG}`;
+const initialDiff = getDifficultyConfig();
+statusEl.textContent = initialDiff.spawnDelay === 0
+  ? `当前难度：${initialDiff.label}。狙击手已在开局出现。当前版本: ${BUILD_TAG}`
+  : `当前难度：${initialDiff.label}。狙击手会在 ${initialDiff.spawnDelay} 秒后随机现身。当前版本: ${BUILD_TAG}`;
 resetGame();
 loop();

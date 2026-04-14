@@ -49,7 +49,7 @@ h1 { margin: 0; }
   justify-content: center;
 }
 .changelog {
-  width: 280px;
+  width: 300px;
   max-width: 100%;
   background: rgba(255, 255, 255, 0.84);
   border: 2px solid #334155;
@@ -60,8 +60,35 @@ h1 { margin: 0; }
 .changelog h2, .changelog h3 {
   margin: 0 0 8px;
 }
+.log-toggle summary {
+  cursor: pointer;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.log-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+.log-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.log-head span {
+  font-size: 12px;
+  color: #475569;
+}
 .log-block {
   margin-bottom: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.6);
+}
+.log-block.latest {
+  background: linear-gradient(135deg, rgba(255, 244, 180, 0.95), rgba(255, 224, 130, 0.95));
+  border: 2px solid #f59e0b;
 }
 .log-block ul {
   margin: 0;
