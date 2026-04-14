@@ -11,9 +11,12 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '2.1.3';
+const BUILD_TAG = '2.2.0';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
+const PLAYER_SPRITE = 'assets-player.png';
+const LEFT_VEHICLE_SPRITES = ['assets-left-1.png', 'assets-left-2.png', 'assets-left-3.png'];
+const RIGHT_VEHICLE_SPRITES = ['assets-right-1.png', 'assets-right-2.jpg', 'assets-right-3.png'];
 
 const DIFFICULTIES = {
   easy: { label: '简单', carMultiplier: 1, sniperMove: 1, aimSeconds: 1, spawnDelay: 0 },
@@ -21,6 +24,24 @@ const DIFFICULTIES = {
   extreme: { label: '极难', carMultiplier: 4, sniperMove: 5, aimSeconds: 0.3, spawnDelay: 5 },
   inferno: { label: '炼狱', carMultiplier: 8, sniperMove: 7, aimSeconds: 0, spawnDelay: 6 }
 };
+
+const playerImage = new Image();
+playerImage.src = PLAYER_SPRITE;
+const leftVehicleImages = LEFT_VEHICLE_SPRITES.map((src) => {
+  const img = new Image();
+  img.src = src;
+  return img;
+});
+const rightVehicleImages = RIGHT_VEHICLE_SPRITES.map((src) => {
+  const img = new Image();
+  img.src = src;
+  return img;
+});
+const sniperDeathImage = new Image();
+sniperDeathImage.src = SNIPER_DEATH_GIF;
+const defeatAudio = new Audio(DEFEAT_SFX);
+defeatAudio.preload = 'auto';
+defeatAudio.volume = 0.85;
 
 let best = Number(localStorage.getItem('crossyBest') || 0);
 let currentDifficulty = difficultyEl.value;
@@ -41,11 +62,6 @@ let elapsedTime = 0;
 let resultText = '';
 let resultStyle = 'lose';
 let killEffect = null;
-const sniperDeathImage = new Image();
-sniperDeathImage.src = SNIPER_DEATH_GIF;
-const defeatAudio = new Audio(DEFEAT_SFX);
-defeatAudio.preload = 'auto';
-defeatAudio.volume = 0.85;
 
 function getDifficultyConfig() {
   return DIFFICULTIES[currentDifficulty];
@@ -108,15 +124,17 @@ function buildCars() {
     const dir = row % 4 === 0 ? 1 : -1;
     const baseSpeed = 1.2 + (ROWS - row) * 0.03;
     const speed = baseSpeed * diff.carMultiplier;
+    const spriteSet = dir > 0 ? rightVehicleImages : leftVehicleImages;
     for (let i = 0; i < 3; i++) {
       cars.push({
         row,
         x: (i * 180 + row * 37) % (canvas.width + 120) - 60,
-        width: 54,
-        height: 26,
+        width: 78,
+        height: 42,
         dir,
         speed,
-        color: dir > 0 ? '#ef4444' : '#3b82f6'
+        spriteIndex: i % 3,
+        image: spriteSet[i % 3]
       });
     }
   }
@@ -142,8 +160,7 @@ function triggerLose(message) {
     width: 96,
     height: 96,
     alpha: 1,
-    alive: true,
-    mode: 'gif'
+    alive: true
   };
 }
 
@@ -234,8 +251,8 @@ function updateSniper(deltaSeconds) {
 function updateCars(deltaSeconds) {
   for (const car of cars) {
     car.x += car.speed * car.dir * deltaSeconds * 60;
-    if (car.dir > 0 && car.x > canvas.width + 70) car.x = -80;
-    if (car.dir < 0 && car.x < -80) car.x = canvas.width + 70;
+    if (car.dir > 0 && car.x > canvas.width + 90) car.x = -100;
+    if (car.dir < 0 && car.x < -100) car.x = canvas.width + 90;
 
     if (car.row === player.row) {
       const px = player.col * TILE + TILE / 2;
@@ -243,8 +260,8 @@ function updateCars(deltaSeconds) {
       if (
         px > car.x - car.width / 2 &&
         px < car.x + car.width / 2 &&
-        py > car.row * TILE + 6 &&
-        py < car.row * TILE + TILE - 6
+        py > car.row * TILE + 4 &&
+        py < car.row * TILE + TILE - 4
       ) {
         triggerLose('撞到了，按 R 重新开始。');
       }
@@ -297,23 +314,31 @@ function drawRow(row) {
 
 function drawCars() {
   for (const car of cars) {
-    const y = car.row * TILE + 7;
-    ctx.fillStyle = car.color;
-    ctx.fillRect(car.x - car.width / 2, y, car.width, car.height);
-    ctx.fillStyle = '#111827';
-    ctx.fillRect(car.x - 18, y + 5, 10, 8);
-    ctx.fillRect(car.x + 8, y + 5, 10, 8);
+    const y = car.row * TILE + 1;
+    if (car.image.complete) {
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(car.image, car.x - car.width / 2, y, car.width, car.height);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(car.x - car.width / 2, y + 6, car.width, car.height - 12);
+    }
   }
 }
 
 function drawPlayer() {
-  const x = player.col * TILE + 6;
-  const y = player.row * TILE + 6;
-  ctx.fillStyle = '#fde047';
-  ctx.fillRect(x, y, TILE - 12, TILE - 12);
-  ctx.fillStyle = '#111827';
-  ctx.fillRect(x + 8, y + 8, 5, 5);
-  ctx.fillRect(x + 21, y + 8, 5, 5);
+  const x = player.col * TILE + 2;
+  const y = player.row * TILE + 1;
+  if (playerImage.complete) {
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(playerImage, x, y, TILE - 4, TILE - 2);
+    ctx.restore();
+  } else {
+    ctx.fillStyle = '#fde047';
+    ctx.fillRect(x, y, TILE - 4, TILE - 2);
+  }
 }
 
 function drawSniper() {
