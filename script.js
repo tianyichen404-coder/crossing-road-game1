@@ -11,12 +11,12 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '2.2.0';
+const BUILD_TAG = '2.2.1';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
 const LEFT_VEHICLE_SPRITES = ['assets-left-1.png', 'assets-left-2.png', 'assets-left-3.png'];
-const RIGHT_VEHICLE_SPRITES = ['assets-right-1.png', 'assets-right-2.jpg', 'assets-right-3.png'];
+const RIGHT_VEHICLE_SPRITES = ['assets-right-1.png', 'assets-right-2.png', 'assets-right-3.png'];
 
 const DIFFICULTIES = {
   easy: { label: '简单', carMultiplier: 1, sniperMove: 1, aimSeconds: 1, spawnDelay: 0 },
