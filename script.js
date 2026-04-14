@@ -11,8 +11,9 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '2.1.2';
+const BUILD_TAG = '2.1.3';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
+const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 
 const DIFFICULTIES = {
   easy: { label: '简单', carMultiplier: 1, sniperMove: 1, aimSeconds: 1, spawnDelay: 0 },
@@ -42,6 +43,9 @@ let resultStyle = 'lose';
 let killEffect = null;
 const sniperDeathImage = new Image();
 sniperDeathImage.src = SNIPER_DEATH_GIF;
+const defeatAudio = new Audio(DEFEAT_SFX);
+defeatAudio.preload = 'auto';
+defeatAudio.volume = 0.85;
 
 function getDifficultyConfig() {
   return DIFFICULTIES[currentDifficulty];
@@ -118,12 +122,20 @@ function buildCars() {
   }
 }
 
+function playDefeatSound() {
+  try {
+    defeatAudio.currentTime = 0;
+    defeatAudio.play().catch(() => {});
+  } catch {}
+}
+
 function triggerLose(message) {
   const target = getPlayerCenter();
   gameOver = true;
   resultText = '失败';
   resultStyle = 'lose';
   statusEl.textContent = message;
+  playDefeatSound();
   killEffect = {
     x: target.x,
     y: target.y,
