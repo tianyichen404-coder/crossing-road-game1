@@ -5,13 +5,14 @@ const bestEl = document.getElementById('best');
 const timerEl = document.getElementById('timer');
 const statusEl = document.getElementById('status');
 const difficultyEl = document.getElementById('difficulty');
+const mobileControlsEl = document.getElementById('mobileControls');
 
 const COLS = 12;
 const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '2.2.3';
+const BUILD_TAG = '2.3.0';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -214,6 +215,26 @@ window.addEventListener('keydown', (event) => {
   else if (key === 'arrowright' || key === 'd') movePlayer(1, 0);
   else if (key === 'r') resetGame();
 });
+
+if (mobileControlsEl) {
+  const handleMobileAction = (target) => {
+    const move = target.dataset.move;
+    const action = target.dataset.action;
+    if (move === 'up') movePlayer(0, -1);
+    else if (move === 'down') movePlayer(0, 1);
+    else if (move === 'left') movePlayer(-1, 0);
+    else if (move === 'right') movePlayer(1, 0);
+    else if (action === 'restart') resetGame();
+  };
+
+  mobileControlsEl.querySelectorAll('button').forEach((button) => {
+    button.addEventListener('click', () => handleMobileAction(button));
+    button.addEventListener('touchstart', (event) => {
+      event.preventDefault();
+      handleMobileAction(button);
+    }, { passive: false });
+  });
+}
 
 difficultyEl.addEventListener('change', () => {
   currentDifficulty = difficultyEl.value;

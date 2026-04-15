@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>过马路（经典版）</title>
-  <link rel="stylesheet" href="styles.css?v=223" />
+  <link rel="stylesheet" href="styles.css?v=230" />
 </head>
 <body>
   <div class="wrap">
@@ -30,6 +30,15 @@
           <span>计时: <strong id="timer">0.00s</strong></span>
         </div>
         <canvas id="game" width="480" height="640"></canvas>
+        <div class="mobile-controls" id="mobileControls" aria-label="手机触控按钮">
+          <button data-move="up">↑</button>
+          <div class="mobile-mid-row">
+            <button data-move="left">←</button>
+            <button data-move="down">↓</button>
+            <button data-move="right">→</button>
+          </div>
+          <button data-action="restart" class="restart-btn">重开</button>
+        </div>
         <p id="status">小心来车，尽量往上走。</p>
       </div>
       <aside class="changelog">
@@ -38,6 +47,17 @@
           <summary>展开 / 收起更新日志</summary>
           <div class="log-scroll">
             <div class="log-block latest">
+              <div class="log-head">
+                <h3>v2.3.0</h3>
+                <span>2026-04-14</span>
+              </div>
+              <ul>
+                <li>新增手机版触控按钮</li>
+                <li>新增移动端布局适配</li>
+                <li>保留电脑端界面不变</li>
+              </ul>
+            </div>
+            <div class="log-block">
               <div class="log-head">
                 <h3>v2.2.3</h3>
                 <span>2026-04-14</span>
@@ -147,6 +167,6 @@
       </aside>
     </div>
   </div>
-  <script src="script.js?v=223"></script>
+  <script src="script.js?v=230"></script>
 </body>
 </html>

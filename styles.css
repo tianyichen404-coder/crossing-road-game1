@@ -102,4 +102,67 @@ canvas {
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
   max-width: 100%;
   height: auto;
+  touch-action: none;
+}
+.mobile-controls {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+.mobile-mid-row {
+  display: flex;
+  gap: 10px;
+}
+.mobile-controls button {
+  width: 64px;
+  height: 64px;
+  border: none;
+  border-radius: 16px;
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(180deg, #334155, #0f172a);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+}
+.mobile-controls .restart-btn {
+  width: 120px;
+  font-size: 22px;
+}
+@media (max-width: 900px) {
+  .layout {
+    flex-direction: column;
+    align-items: center;
+  }
+  .changelog {
+    width: min(480px, 100%);
+  }
+}
+@media (max-width: 700px) {
+  .wrap {
+    padding: 12px;
+  }
+  .hint {
+    font-size: 14px;
+    text-align: center;
+  }
+  .controls {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .hud {
+    gap: 10px;
+    font-size: 16px;
+  }
+  .changelog {
+    order: 2;
+    width: 100%;
+  }
+  .log-scroll {
+    max-height: 220px;
+  }
+  .mobile-controls {
+    display: flex;
+  }
 }
