@@ -27,7 +27,7 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.1.4';
+const BUILD_TAG = '3.1.5';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -325,7 +325,7 @@ function triggerWin() {
 
 function movePlayer(dx, dy) {
   if (gameOver) return;
-  const verticalAllowed = currentMode === 'classic';
+  const verticalAllowed = currentMode === 'classic' || currentMode === 'endless';
   const nextCol = Math.max(0, Math.min(COLS - 1, player.col + dx));
   const nextRow = verticalAllowed ? Math.max(0, Math.min(ROWS - 1, player.row + dy)) : player.row;
   if (nextCol === player.col && nextRow === player.row) return;
@@ -474,9 +474,9 @@ function updateEndless(deltaSeconds) {
     }
 
     const playerCenter = getPlayerCenter();
-    const timeToShot = Math.max(0.01, endlessSniperCooldown);
-    const followFactor = Math.min(1, (deltaSeconds / timeToShot) * 0.5);
-    sniper.x += (playerCenter.x - sniper.x) * followFactor;
+    const followFactor = Math.min(0.08, deltaSeconds * 0.8);
+    const sway = Math.sin(elapsedTime * 1.8) * 18;
+    sniper.x += ((playerCenter.x + sway) - sniper.x) * followFactor;
     sniper.y += (playerCenter.y - sniper.y) * followFactor;
     endlessSniperCooldown -= deltaSeconds;
     if (endlessSniperCooldown <= 0) {
