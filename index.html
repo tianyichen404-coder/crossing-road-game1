@@ -6,167 +6,100 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>过马路（经典版）</title>
-  <link rel="stylesheet" href="styles.css?v=230" />
+  <title>过马路 v3.0.0</title>
+  <link rel="stylesheet" href="styles.css?v=300" />
 </head>
 <body>
   <div class="wrap">
-    <h1>过马路（经典版）</h1>
-    <p class="hint">方向键 / WASD 移动，R 重新开始</p>
-    <div class="controls">
-      <label for="difficulty">难度</label>
-      <select id="difficulty">
-        <option value="easy">简单</option>
-        <option value="hard">困难</option>
-        <option value="extreme">极难</option>
-        <option value="inferno">炼狱</option>
-      </select>
-    </div>
-    <div class="layout">
-      <div class="game-area">
-        <div class="hud">
-          <span>分数: <strong id="score">0</strong></span>
-          <span>最佳: <strong id="best">0</strong></span>
-          <span>计时: <strong id="timer">0.00s</strong></span>
-        </div>
-        <canvas id="game" width="480" height="640"></canvas>
-        <div class="mobile-controls" id="mobileControls" aria-label="手机触控按钮">
-          <button data-move="up">↑</button>
-          <div class="mobile-mid-row">
-            <button data-move="left">←</button>
-            <button data-move="down">↓</button>
-            <button data-move="right">→</button>
-          </div>
-          <button data-action="restart" class="restart-btn">重开</button>
-        </div>
-        <p id="status">小心来车，尽量往上走。</p>
+    <section id="modeSelect" class="mode-select-screen">
+      <h1>过马路 v3.0.0</h1>
+      <p class="hint">请选择游玩模式</p>
+      <div class="mode-buttons">
+        <button id="classicModeBtn" class="mode-btn">经典模式</button>
+        <button id="endlessModeBtn" class="mode-btn endless">无尽模式</button>
       </div>
-      <aside class="changelog">
-        <h2>更新日志</h2>
-        <details class="log-toggle" open>
-          <summary>展开 / 收起更新日志</summary>
-          <div class="log-scroll">
-            <div class="log-block latest">
-              <div class="log-head">
-                <h3>v2.3.0</h3>
-                <span>2026-04-14</span>
-              </div>
-              <ul>
-                <li>新增手机版触控按钮</li>
-                <li>新增移动端布局适配</li>
-                <li>保留电脑端界面不变</li>
-              </ul>
-            </div>
-            <div class="log-block">
-              <div class="log-head">
-                <h3>v2.2.3</h3>
-                <span>2026-04-14</span>
-              </div>
-              <ul>
-                <li>玩家死亡动画bug更改</li>
-              </ul>
-            </div>
-            <div class="log-block">
-              <div class="log-head">
-                <h3>v2.2.2</h3>
-                <span>2026-04-14</span>
-              </div>
-              <ul>
-                <li>新增按死亡来源显示失败副标题</li>
-              </ul>
-            </div>
-            <div class="log-block">
-              <div class="log-head">
-                <h3>v2.2.1</h3>
-                <span>2026-04-14</span>
-              </div>
-              <ul>
-                <li>材质bug修改</li>
-              </ul>
-            </div>
-            <div class="log-block">
-              <div class="log-head">
-                <h3>v2.2.0</h3>
-                <span>2026-04-14</span>
-              </div>
-              <ul>
-                <li>更换角色材质</li>
-                <li>增加车辆种类</li>
-                <li>更换车辆材质</li>
-              </ul>
-            </div>
-            <div class="log-block">
-              <div class="log-head">
-                <h3>v2.1.3</h3>
-                <span>2026-04-14</span>
-              </div>
-              <ul>
-                <li>新增被击败音效（使用用户提供 MP3）</li>
-                <li>保留 GIF 击败特效与胜负大字提示</li>
-              </ul>
-            </div>
-            <div class="log-block">
-              <div class="log-head">
-                <h3>v2.1.2</h3>
-                <span>2026-04-14</span>
-              </div>
-              <ul>
-                <li>玩家被狙击手击败后，改为播放指定 GIF 特效</li>
-                <li>保留胜负大字提示与更新日志功能</li>
-              </ul>
-            </div>
-            <div class="log-block">
-              <div class="log-head">
-                <h3>v2.1.1</h3>
-                <span>2026-04-14</span>
-              </div>
-              <ul>
-                <li>最新版本高亮显示</li>
-                <li>更新日志支持折叠与滚动</li>
-                <li>更新日志按时间倒序展示</li>
-                <li>新增发布日期</li>
-                <li>狙击手出现时间改为按难度区分</li>
-              </ul>
-            </div>
-            <div class="log-block">
-              <div class="log-head">
-                <h3>v2.1.0</h3>
-                <span>2026-04-14</span>
-              </div>
-              <ul>
-                <li>新增右上角更新日志面板</li>
-                <li>狙击手会在开局 5 秒内随机生成于任意坐标后发起攻击</li>
-                <li>新增狙击击杀特效</li>
-                <li>胜利与失败时新增屏幕中央 3D 大字提示</li>
-              </ul>
-            </div>
-            <div class="log-block">
-              <div class="log-head">
-                <h3>v2.0.0</h3>
-                <span>2026-04-14</span>
-              </div>
-              <ul>
-                <li>新增四档难度</li>
-                <li>新增通关计时器</li>
-                <li>标题更新为过马路（经典版）</li>
-              </ul>
-            </div>
-            <div class="log-block">
-              <div class="log-head">
-                <h3>v1.0.0</h3>
-                <span>2026-04-14</span>
-              </div>
-              <ul>
-                <li>创建新版仓库与网页发布</li>
-                <li>加入狙击手追踪机制</li>
-                <li>加入版本号显示</li>
-              </ul>
-            </div>
+    </section>
+
+    <section id="gameScreen" class="game-screen hidden">
+      <h1 id="gameTitle">过马路（经典版）</h1>
+      <p class="hint" id="gameHint">方向键 / WASD 移动，R 重新开始</p>
+      <div class="controls" id="classicControls">
+        <label for="difficulty">难度</label>
+        <select id="difficulty">
+          <option value="easy">简单</option>
+          <option value="hard">困难</option>
+          <option value="extreme">极难</option>
+          <option value="inferno">炼狱</option>
+        </select>
+      </div>
+      <div class="layout">
+        <div class="game-area">
+          <div class="hud" id="classicHud">
+            <span>分数: <strong id="score">0</strong></span>
+            <span>最佳: <strong id="best">0</strong></span>
+            <span>计时: <strong id="timer">0.00s</strong></span>
           </div>
-        </details>
-      </aside>
-    </div>
+          <div class="endless-hud hidden" id="endlessHud">
+            <span class="hud-3d black">计时 <strong id="endlessTimer">0.00s</strong></span>
+            <span class="hud-3d white">分数 <strong id="endlessScore">0.000</strong></span>
+            <span class="hud-3d blue">最高分 <strong id="endlessBest">0.000</strong></span>
+            <span class="hud-3d gold">金币 <strong id="coinCount">0</strong></span>
+          </div>
+          <canvas id="game" width="480" height="640"></canvas>
+          <div class="mobile-controls" id="mobileControls" aria-label="手机触控按钮">
+            <button data-move="up">↑</button>
+            <div class="mobile-mid-row">
+              <button data-move="left">←</button>
+              <button data-move="down">↓</button>
+              <button data-move="right">→</button>
+            </div>
+            <button data-action="restart" class="restart-btn">重开</button>
+          </div>
+          <p id="status">小心来车，尽量往上走。</p>
+        </div>
+        <aside class="changelog">
+          <h2>更新日志</h2>
+          <details class="log-toggle" open>
+            <summary>展开 / 收起更新日志</summary>
+            <div class="log-scroll">
+              <div class="log-block latest">
+                <div class="log-head">
+                  <h3>v3.0.0</h3>
+                  <span>2026-04-14</span>
+                </div>
+                <ul>
+                  <li>新增模式选择页面</li>
+                  <li>新增无尽模式</li>
+                  <li>新增金币系统与无尽模式结算页</li>
+                  <li>经典模式页面保持原样</li>
+                </ul>
+              </div>
+              <div class="log-block">
+                <div class="log-head">
+                  <h3>v2.3.0</h3>
+                  <span>2026-04-14</span>
+                </div>
+                <ul>
+                  <li>新增手机版触控按钮</li>
+                  <li>新增移动端布局适配</li>
+                  <li>保留电脑端界面不变</li>
+                </ul>
+              </div>
+              <div class="log-block">
+                <div class="log-head">
+                  <h3>v2.2.3</h3>
+                  <span>2026-04-14</span>
+                </div>
+                <ul>
+                  <li>玩家死亡动画bug更改</li>
+                </ul>
+              </div>
+            </div>
+          </details>
+        </aside>
+      </div>
+    </section>
   </div>
-  <script src="script.js?v=230"></script>
+  <script src="script.js?v=300"></script>
 </body>
 </html>

@@ -6,13 +6,26 @@ const timerEl = document.getElementById('timer');
 const statusEl = document.getElementById('status');
 const difficultyEl = document.getElementById('difficulty');
 const mobileControlsEl = document.getElementById('mobileControls');
+const modeSelectEl = document.getElementById('modeSelect');
+const gameScreenEl = document.getElementById('gameScreen');
+const classicModeBtn = document.getElementById('classicModeBtn');
+const endlessModeBtn = document.getElementById('endlessModeBtn');
+const classicControlsEl = document.getElementById('classicControls');
+const classicHudEl = document.getElementById('classicHud');
+const endlessHudEl = document.getElementById('endlessHud');
+const endlessTimerEl = document.getElementById('endlessTimer');
+const endlessScoreEl = document.getElementById('endlessScore');
+const endlessBestEl = document.getElementById('endlessBest');
+const coinCountEl = document.getElementById('coinCount');
+const gameTitleEl = document.getElementById('gameTitle');
+const gameHintEl = document.getElementById('gameHint');
 
 const COLS = 12;
 const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '2.3.0';
+const BUILD_TAG = '3.0.0';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -20,6 +33,11 @@ const LEFT_VEHICLE_SPRITES = ['assets-left-1.png', 'assets-left-2.png', 'assets-
 const RIGHT_VEHICLE_SPRITES = ['assets-right-1.png', 'assets-right-2.png', 'assets-right-3.png'];
 const LEFT_VEHICLE_NAMES = ['核弹', '大运', '火箭'];
 const RIGHT_VEHICLE_NAMES = ['战斗机', '坦克', 'UFO'];
+const COIN_SPRITE = 'assets-coin.gif';
+const ENDLESS_SCORE_PER_SEC = 1.234;
+const ENDLESS_COIN_CHANCE = 0.333;
+const ENDLESS_SCROLL_GROWTH_PER_MIN = 0.15;
+const ENDLESS_SNIPE_INTERVAL = 5;
 
 const DIFFICULTIES = {
   easy: { label: '简单', carMultiplier: 1, sniperMove: 1, aimSeconds: 1, spawnDelay: 0 },
@@ -40,6 +58,8 @@ const DEATH_SUBTITLE_MAP = {
 
 const playerImage = new Image();
 playerImage.src = PLAYER_SPRITE;
+const coinImage = new Image();
+coinImage.src = COIN_SPRITE;
 const leftVehicleImages = LEFT_VEHICLE_SPRITES.map((src) => {
   const img = new Image();
   img.src = src;
@@ -56,11 +76,14 @@ const defeatAudio = new Audio(DEFEAT_SFX);
 defeatAudio.preload = 'auto';
 defeatAudio.volume = 0.85;
 
+let currentMode = null;
 let best = Number(localStorage.getItem('crossyBest') || 0);
+let endlessBest = Number(localStorage.getItem('crossyEndlessBest') || 0);
 let currentDifficulty = difficultyEl.value;
 bestEl.textContent = best;
+endlessBestEl.textContent = endlessBest.toFixed(3);
 
-const laneTypes = Array.from({ length: ROWS }, (_, row) => {
+const classicLaneTypes = Array.from({ length: ROWS }, (_, row) => {
   if (SAFE_ROWS.has(row)) return 'safe';
   return row % 2 === 0 ? 'road' : 'grass';
 });
@@ -76,6 +99,12 @@ let resultText = '';
 let resultSubtitle = '';
 let resultStyle = 'lose';
 let killEffect = null;
+let endlessRows = [];
+let endlessScroll = 0;
+let endlessScore = 0;
+let endlessCoins = 0;
+let endlessSniperCooldown = ENDLESS_SNIPE_INTERVAL;
+let endlessResult = null;
 
 function getDifficultyConfig() {
   return DIFFICULTIES[currentDifficulty];
@@ -88,10 +117,39 @@ function getPlayerCenter() {
   };
 }
 
-function updateHud() {
+function resetSharedState() {
+  score = 0;
+  elapsedTime = 0;
+  gameOver = false;
+  resultText = '';
+  resultSubtitle = '';
+  killEffect = null;
+  endlessResult = null;
+  lastTime = 0;
+}
+
+function showModeSelect() {
+  currentMode = null;
+  modeSelectEl.classList.remove('hidden');
+  gameScreenEl.classList.add('hidden');
+}
+
+function showGameScreen() {
+  modeSelectEl.classList.add('hidden');
+  gameScreenEl.classList.remove('hidden');
+}
+
+function updateClassicHud() {
   scoreEl.textContent = score;
   bestEl.textContent = best;
   timerEl.textContent = `${elapsedTime.toFixed(2)}s`;
+}
+
+function updateEndlessHud() {
+  endlessTimerEl.textContent = `${elapsedTime.toFixed(2)}s`;
+  endlessScoreEl.textContent = endlessScore.toFixed(3);
+  endlessBestEl.textContent = endlessBest.toFixed(3);
+  coinCountEl.textContent = String(endlessCoins);
 }
 
 function randomSpawnPoint() {
@@ -101,16 +159,33 @@ function randomSpawnPoint() {
   };
 }
 
-function resetGame() {
+function startClassicMode() {
+  currentMode = 'classic';
+  showGameScreen();
+  classicControlsEl.classList.remove('hidden');
+  classicHudEl.classList.remove('hidden');
+  endlessHudEl.classList.add('hidden');
+  gameTitleEl.textContent = '过马路（经典版）';
+  gameHintEl.textContent = '方向键 / WASD 移动，R 重新开始';
+  resetClassicMode();
+}
+
+function startEndlessMode() {
+  currentMode = 'endless';
+  showGameScreen();
+  classicControlsEl.classList.add('hidden');
+  classicHudEl.classList.add('hidden');
+  endlessHudEl.classList.remove('hidden');
+  gameTitleEl.textContent = '过马路（无尽模式）';
+  gameHintEl.textContent = '方向键 / WASD 或触控按钮横向躲避，努力生存并捡金币';
+  resetEndlessMode();
+}
+
+function resetClassicMode() {
   const diff = getDifficultyConfig();
+  resetSharedState();
   player = { col: Math.floor(COLS / 2), row: ROWS - 1 };
   cars = [];
-  score = 0;
-  elapsedTime = 0;
-  gameOver = false;
-  resultText = '';
-  resultSubtitle = '';
-  killEffect = null;
   const spawn = randomSpawnPoint();
   sniper = {
     x: spawn.x,
@@ -127,15 +202,43 @@ function resetGame() {
   statusEl.textContent = diff.spawnDelay === 0
     ? `当前难度：${diff.label}。狙击手已在开局出现。`
     : `当前难度：${diff.label}。狙击手会在 ${diff.spawnDelay} 秒后随机现身。`;
-  buildCars();
-  updateHud();
+  buildClassicCars();
+  updateClassicHud();
 }
 
-function buildCars() {
+function resetEndlessMode() {
+  resetSharedState();
+  player = { col: Math.floor(COLS / 2), row: ROWS - 3 };
+  cars = [];
+  endlessRows = [];
+  endlessScroll = 0;
+  endlessScore = 0;
+  endlessCoins = 0;
+  endlessSniperCooldown = ENDLESS_SNIPE_INTERVAL;
+  sniper = {
+    x: 60,
+    y: 60,
+    aimTime: 0,
+    firing: false,
+    shotTimer: 0,
+    shotLine: null,
+    moveFactor: 1,
+    aimSeconds: 0.5,
+    spawned: true,
+    spawnCountdown: 0
+  };
+  for (let i = 0; i < ROWS + 3; i++) {
+    endlessRows.push(createEndlessRow(-i * TILE));
+  }
+  statusEl.textContent = '无尽模式开始，躲避障碍，拾取金币。';
+  updateEndlessHud();
+}
+
+function buildClassicCars() {
   cars = [];
   const diff = getDifficultyConfig();
   for (let row = 0; row < ROWS; row++) {
-    if (laneTypes[row] !== 'road') continue;
+    if (classicLaneTypes[row] !== 'road') continue;
     const dir = row % 4 === 0 ? 1 : -1;
     const baseSpeed = 1.2 + (ROWS - row) * 0.03;
     const speed = baseSpeed * diff.carMultiplier;
@@ -149,12 +252,37 @@ function buildCars() {
         height: 42,
         dir,
         speed,
-        spriteIndex: i % 3,
         image: spriteSet[i % 3],
         label: nameSet[i % 3]
       });
     }
   }
+}
+
+function createEndlessRow(y) {
+  const gapWidth = 2 + Math.floor(Math.random() * 2);
+  const minStart = 1;
+  const maxStart = COLS - gapWidth - 1;
+  const gapStart = Math.max(minStart, Math.min(maxStart, Math.floor(Math.random() * (maxStart - minStart + 1)) + minStart));
+  const dir = Math.random() > 0.5 ? 1 : -1;
+  const spriteSet = dir > 0 ? rightVehicleImages : leftVehicleImages;
+  const nameSet = dir > 0 ? RIGHT_VEHICLE_NAMES : LEFT_VEHICLE_NAMES;
+  const segments = [];
+  for (let col = 0; col < COLS; col++) {
+    if (col >= gapStart && col < gapStart + gapWidth) continue;
+    const idx = Math.floor(Math.random() * 3);
+    segments.push({
+      col,
+      width: 1,
+      image: spriteSet[idx],
+      label: nameSet[idx]
+    });
+  }
+  const coin = Math.random() < ENDLESS_COIN_CHANCE ? {
+    col: gapStart + Math.floor(gapWidth / 2),
+    collected: false
+  } : null;
+  return { y, gapStart, gapWidth, dir, segments, coin };
 }
 
 function playDefeatSound() {
@@ -167,8 +295,10 @@ function playDefeatSound() {
 function triggerLose(message, cause = 'sniper') {
   const target = getPlayerCenter();
   gameOver = true;
-  resultText = '失败';
-  resultSubtitle = DEATH_SUBTITLE_MAP[cause] || '你被创飞了';
+  resultText = currentMode === 'endless' ? '游戏结束' : '失败';
+  resultSubtitle = currentMode === 'endless'
+    ? `${DEATH_SUBTITLE_MAP[cause] || '你被创飞了'}\n分数 ${endlessScore.toFixed(3)} | 时间 ${elapsedTime.toFixed(2)}s | 金币 ${endlessCoins} | 最高分 ${endlessBest.toFixed(3)}`
+    : (DEATH_SUBTITLE_MAP[cause] || '你被创飞了');
   resultStyle = 'lose';
   statusEl.textContent = message;
   playDefeatSound();
@@ -192,11 +322,12 @@ function triggerWin() {
 
 function movePlayer(dx, dy) {
   if (gameOver) return;
+  const verticalAllowed = currentMode === 'classic';
   const nextCol = Math.max(0, Math.min(COLS - 1, player.col + dx));
-  const nextRow = Math.max(0, Math.min(ROWS - 1, player.row + dy));
+  const nextRow = verticalAllowed ? Math.max(0, Math.min(ROWS - 1, player.row + dy)) : player.row;
   if (nextCol === player.col && nextRow === player.row) return;
   player.col = nextCol;
-  if (nextRow < player.row) {
+  if (currentMode === 'classic' && nextRow < player.row) {
     score += 1;
     if (score > best) {
       best = score;
@@ -204,7 +335,12 @@ function movePlayer(dx, dy) {
     }
   }
   player.row = nextRow;
-  updateHud();
+  if (currentMode === 'classic') updateClassicHud();
+}
+
+function handleRestart() {
+  if (currentMode === 'classic') resetClassicMode();
+  else if (currentMode === 'endless') resetEndlessMode();
 }
 
 window.addEventListener('keydown', (event) => {
@@ -213,7 +349,7 @@ window.addEventListener('keydown', (event) => {
   else if (key === 'arrowdown' || key === 's') movePlayer(0, 1);
   else if (key === 'arrowleft' || key === 'a') movePlayer(-1, 0);
   else if (key === 'arrowright' || key === 'd') movePlayer(1, 0);
-  else if (key === 'r') resetGame();
+  else if (key === 'r') handleRestart();
 });
 
 if (mobileControlsEl) {
@@ -224,9 +360,8 @@ if (mobileControlsEl) {
     else if (move === 'down') movePlayer(0, 1);
     else if (move === 'left') movePlayer(-1, 0);
     else if (move === 'right') movePlayer(1, 0);
-    else if (action === 'restart') resetGame();
+    else if (action === 'restart') handleRestart();
   };
-
   mobileControlsEl.querySelectorAll('button').forEach((button) => {
     button.addEventListener('click', () => handleMobileAction(button));
     button.addEventListener('touchstart', (event) => {
@@ -236,12 +371,14 @@ if (mobileControlsEl) {
   });
 }
 
+classicModeBtn.addEventListener('click', startClassicMode);
+endlessModeBtn.addEventListener('click', startEndlessMode);
 difficultyEl.addEventListener('change', () => {
   currentDifficulty = difficultyEl.value;
-  resetGame();
+  if (currentMode === 'classic') resetClassicMode();
 });
 
-function updateSniper(deltaSeconds) {
+function updateClassicSniper(deltaSeconds) {
   if (!sniper.spawned) {
     sniper.spawnCountdown -= deltaSeconds;
     if (sniper.spawnCountdown <= 0) {
@@ -253,31 +390,22 @@ function updateSniper(deltaSeconds) {
     }
     return;
   }
-
   const target = getPlayerCenter();
   const followSpeed = 0.018 * sniper.moveFactor;
   sniper.x += (target.x - sniper.x) * followSpeed * deltaSeconds * 60;
   sniper.y += (target.y - sniper.y) * followSpeed * deltaSeconds * 60;
-
   const distance = Math.hypot(target.x - sniper.x, target.y - sniper.y);
-
   if (!sniper.firing) {
     if (distance <= SNIPER_LOCK_DISTANCE) {
       sniper.aimTime += deltaSeconds;
-      if (sniper.aimSeconds === 0) {
-        sniper.firing = true;
-        sniper.shotTimer = 0.22;
-        sniper.shotLine = { fromX: sniper.x, fromY: sniper.y, toX: target.x, toY: target.y };
-        triggerLose('炼狱狙击瞬间命中，你已经死亡。按 R 重新开始。', 'sniper');
-        return;
-      }
-      const remaining = Math.max(0, sniper.aimSeconds - sniper.aimTime).toFixed(1);
-      statusEl.textContent = `狙击手已锁定，${remaining} 秒后开枪，快躲开！`;
-      if (sniper.aimTime >= sniper.aimSeconds) {
+      if (sniper.aimSeconds === 0 || sniper.aimTime >= sniper.aimSeconds) {
         sniper.firing = true;
         sniper.shotTimer = 0.22;
         sniper.shotLine = { fromX: sniper.x, fromY: sniper.y, toX: target.x, toY: target.y };
         triggerLose('你被狙击手击中了，按 R 重新开始。', 'sniper');
+      } else {
+        const remaining = Math.max(0, sniper.aimSeconds - sniper.aimTime).toFixed(1);
+        statusEl.textContent = `狙击手已锁定，${remaining} 秒后开枪，快躲开！`;
       }
     } else {
       sniper.aimTime = 0;
@@ -287,55 +415,132 @@ function updateSniper(deltaSeconds) {
   }
 }
 
-function updateCars(deltaSeconds) {
+function updateClassicCars(deltaSeconds) {
   for (const car of cars) {
     car.x += car.speed * car.dir * deltaSeconds * 60;
     if (car.dir > 0 && car.x > canvas.width + 90) car.x = -100;
     if (car.dir < 0 && car.x < -100) car.x = canvas.width + 90;
-
     if (car.row === player.row) {
       const px = player.col * TILE + TILE / 2;
       const py = player.row * TILE + TILE / 2;
-      if (
-        px > car.x - car.width / 2 &&
-        px < car.x + car.width / 2 &&
-        py > car.row * TILE + 4 &&
-        py < car.row * TILE + TILE - 4
-      ) {
+      if (px > car.x - car.width / 2 && px < car.x + car.width / 2 && py > car.row * TILE + 4 && py < car.row * TILE + TILE - 4) {
         triggerLose('撞到了，按 R 重新开始。', car.label);
       }
     }
   }
 }
 
-function updateKillEffect(deltaSeconds) {
-  if (!killEffect || !killEffect.alive) return;
-  killEffect.alpha -= 0.9 * deltaSeconds;
-  if (killEffect.alpha <= 0) {
-    killEffect.alive = false;
-  }
-}
-
-function update(deltaSeconds) {
+function updateClassic(deltaSeconds) {
   if (!gameOver) {
     elapsedTime += deltaSeconds;
-    updateCars(deltaSeconds);
-    updateSniper(deltaSeconds);
-
-    if (!gameOver && player.row === 0) {
-      triggerWin();
-    }
-
-    updateHud();
+    updateClassicCars(deltaSeconds);
+    updateClassicSniper(deltaSeconds);
+    if (!gameOver && player.row === 0) triggerWin();
+    updateClassicHud();
   } else {
     if (sniper.shotTimer > 0) sniper.shotTimer -= deltaSeconds;
     updateKillEffect(deltaSeconds);
   }
 }
 
-function drawRow(row) {
-  const y = row * TILE;
-  if (laneTypes[row] === 'road') {
+function updateEndless(deltaSeconds) {
+  if (!gameOver) {
+    elapsedTime += deltaSeconds;
+    const scrollSpeed = 1 + Math.floor(elapsedTime / 60) * ENDLESS_SCROLL_GROWTH_PER_MIN;
+    endlessScroll += scrollSpeed * deltaSeconds * 60;
+    endlessScore += ENDLESS_SCORE_PER_SEC * deltaSeconds;
+    if (endlessScore > endlessBest) {
+      endlessBest = endlessScore;
+      localStorage.setItem('crossyEndlessBest', String(endlessBest));
+    }
+    while (endlessScroll >= TILE) {
+      endlessScroll -= TILE;
+      endlessRows.shift();
+      const topY = endlessRows.length ? endlessRows[endlessRows.length - 1].y - TILE : -TILE;
+      endlessRows.push(createEndlessRow(topY));
+      player.row += 1;
+      if (player.row >= ROWS) {
+        triggerLose('你被地图卷出屏幕了。', 'sniper');
+      }
+    }
+    endlessRows.forEach((row) => {
+      row.y += scrollSpeed * deltaSeconds * 60;
+    });
+    endlessSniperCooldown -= deltaSeconds;
+    const target = getPlayerCenter();
+    const followSpeed = 0.018;
+    sniper.x += (target.x - sniper.x) * followSpeed * deltaSeconds * 60;
+    sniper.y += (target.y - sniper.y) * followSpeed * deltaSeconds * 60;
+    if (endlessSniperCooldown <= 0) {
+      endlessSniperCooldown = ENDLESS_SNIPE_INTERVAL;
+      sniper.shotTimer = 0.22;
+      sniper.shotLine = { fromX: sniper.x, fromY: sniper.y, toX: target.x, toY: target.y };
+      if (Math.hypot(target.x - sniper.x, target.y - sniper.y) <= 28) {
+        triggerLose('你被狙击手击中了。', 'sniper');
+      }
+    }
+    const playerRect = {
+      x: player.col * TILE + 4,
+      y: player.row * TILE + 4,
+      w: TILE - 8,
+      h: TILE - 8
+    };
+    for (const row of endlessRows) {
+      const screenY = row.y + endlessScroll;
+      if (screenY < -TILE || screenY > canvas.height) continue;
+      for (const seg of row.segments) {
+        const segX = seg.col * TILE;
+        if (playerRect.x < segX + TILE && playerRect.x + playerRect.w > segX && playerRect.y < screenY + TILE && playerRect.y + playerRect.h > screenY) {
+          triggerLose('你撞到了障碍物。', seg.label);
+          break;
+        }
+      }
+      if (row.coin && !row.coin.collected) {
+        const coinX = row.coin.col * TILE + 10;
+        const coinY = screenY + 8;
+        if (playerRect.x < coinX + 20 && playerRect.x + playerRect.w > coinX && playerRect.y < coinY + 20 && playerRect.y + playerRect.h > coinY) {
+          row.coin.collected = true;
+          endlessCoins += 1;
+        }
+      }
+    }
+    updateEndlessHud();
+  } else {
+    if (sniper.shotTimer > 0) sniper.shotTimer -= deltaSeconds;
+    updateKillEffect(deltaSeconds);
+  }
+}
+
+function updateKillEffect(deltaSeconds) {
+  if (!killEffect || !killEffect.alive) return;
+  killEffect.alpha -= 0.9 * deltaSeconds;
+  if (killEffect.alpha <= 0) killEffect.alive = false;
+}
+
+function drawClassicRows() {
+  for (let row = 0; row < ROWS; row++) {
+    const y = row * TILE;
+    if (classicLaneTypes[row] === 'road') {
+      ctx.fillStyle = '#4b5563';
+      ctx.fillRect(0, y, canvas.width, TILE);
+      ctx.strokeStyle = '#fbbf24';
+      ctx.setLineDash([14, 14]);
+      ctx.beginPath();
+      ctx.moveTo(0, y + TILE / 2);
+      ctx.lineTo(canvas.width, y + TILE / 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else {
+      ctx.fillStyle = row === 0 ? '#86efac' : '#65a30d';
+      ctx.fillRect(0, y, canvas.width, TILE);
+    }
+  }
+}
+
+function drawEndlessRows() {
+  for (const row of endlessRows) {
+    const y = row.y + endlessScroll;
+    if (y < -TILE || y > canvas.height) continue;
     ctx.fillStyle = '#4b5563';
     ctx.fillRect(0, y, canvas.width, TILE);
     ctx.strokeStyle = '#fbbf24';
@@ -345,23 +550,24 @@ function drawRow(row) {
     ctx.lineTo(canvas.width, y + TILE / 2);
     ctx.stroke();
     ctx.setLineDash([]);
-  } else {
-    ctx.fillStyle = row === 0 ? '#86efac' : '#65a30d';
-    ctx.fillRect(0, y, canvas.width, TILE);
-  }
-}
-
-function drawCars() {
-  for (const car of cars) {
-    const y = car.row * TILE + 1;
-    if (car.image.complete) {
-      ctx.save();
-      ctx.imageSmoothingEnabled = true;
-      ctx.drawImage(car.image, car.x - car.width / 2, y, car.width, car.height);
-      ctx.restore();
-    } else {
-      ctx.fillStyle = '#ef4444';
-      ctx.fillRect(car.x - car.width / 2, y + 6, car.width, car.height - 12);
+    for (const seg of row.segments) {
+      const x = seg.col * TILE;
+      if (seg.image.complete) ctx.drawImage(seg.image, x, y + 1, TILE, TILE - 2);
+      else {
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(x + 2, y + 4, TILE - 4, TILE - 8);
+      }
+    }
+    if (row.coin && !row.coin.collected) {
+      const coinX = row.coin.col * TILE + 8;
+      const coinY = y + 6;
+      if (coinImage.complete) ctx.drawImage(coinImage, coinX, coinY, 24, 24);
+      else {
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath();
+        ctx.arc(coinX + 12, coinY + 12, 10, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 }
@@ -369,23 +575,29 @@ function drawCars() {
 function drawPlayer() {
   const x = player.col * TILE + 2;
   const y = player.row * TILE + 1;
-  if (playerImage.complete) {
-    ctx.save();
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(playerImage, x, y, TILE - 4, TILE - 2);
-    ctx.restore();
-  } else {
+  if (playerImage.complete) ctx.drawImage(playerImage, x, y, TILE - 4, TILE - 2);
+  else {
     ctx.fillStyle = '#fde047';
     ctx.fillRect(x, y, TILE - 4, TILE - 2);
   }
 }
 
-function drawSniper() {
-  if (!sniper.spawned) return;
+function drawClassicCars() {
+  for (const car of cars) {
+    const y = car.row * TILE + 1;
+    if (car.image.complete) ctx.drawImage(car.image, car.x - car.width / 2, y, car.width, car.height);
+    else {
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(car.x - car.width / 2, y + 6, car.width, car.height - 12);
+    }
+  }
+}
 
+function drawSniper() {
+  if (!sniper || !sniper.spawned) return;
   const pulse = 1 + Math.sin(Date.now() / 120) * 0.15;
   ctx.save();
-  ctx.strokeStyle = sniper.aimTime > 0 ? '#ff1f1f' : '#ff4d4f';
+  ctx.strokeStyle = '#ff4d4f';
   ctx.lineWidth = 4;
   ctx.shadowColor = 'rgba(255, 0, 0, 0.55)';
   ctx.shadowBlur = 14;
@@ -402,7 +614,6 @@ function drawSniper() {
   ctx.lineTo(sniper.x, sniper.y + 26);
   ctx.stroke();
   ctx.restore();
-
   if (sniper.shotLine && sniper.shotTimer > 0) {
     ctx.save();
     ctx.strokeStyle = '#ff0000';
@@ -419,21 +630,7 @@ function drawKillEffect() {
   if (!killEffect || !killEffect.alive) return;
   ctx.save();
   ctx.globalAlpha = Math.max(0, killEffect.alpha);
-  if (sniperDeathImage.complete) {
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(
-      sniperDeathImage,
-      killEffect.x - killEffect.width / 2,
-      killEffect.y - killEffect.height / 2,
-      killEffect.width,
-      killEffect.height
-    );
-  } else {
-    ctx.fillStyle = 'rgba(255, 230, 120, 0.85)';
-    ctx.beginPath();
-    ctx.arc(killEffect.x, killEffect.y, 26, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  if (sniperDeathImage.complete) ctx.drawImage(sniperDeathImage, killEffect.x - killEffect.width / 2, killEffect.y - killEffect.height / 2, killEffect.width, killEffect.height);
   ctx.restore();
 }
 
@@ -451,16 +648,19 @@ function drawResultText() {
     ctx.shadowColor = 'rgba(107, 114, 128, 0.65)';
   }
   ctx.shadowBlur = 16;
-  ctx.font = 'bold 64px Microsoft YaHei, Arial';
+  ctx.font = 'bold 56px Microsoft YaHei, Arial';
   ctx.lineWidth = 6;
-  ctx.strokeText(resultText, canvas.width / 2, canvas.height / 2 - (resultSubtitle ? 20 : 0));
-  ctx.fillText(resultText, canvas.width / 2, canvas.height / 2 - (resultSubtitle ? 20 : 0));
-
+  ctx.strokeText(resultText, canvas.width / 2, canvas.height / 2 - 30);
+  ctx.fillText(resultText, canvas.width / 2, canvas.height / 2 - 30);
   if (resultSubtitle) {
-    ctx.font = 'bold 28px Microsoft YaHei, Arial';
+    ctx.font = currentMode === 'endless' ? 'bold 18px Microsoft YaHei, Arial' : 'bold 28px Microsoft YaHei, Arial';
     ctx.lineWidth = 4;
-    ctx.strokeText(resultSubtitle, canvas.width / 2, canvas.height / 2 + 24);
-    ctx.fillText(resultSubtitle, canvas.width / 2, canvas.height / 2 + 24);
+    const lines = resultSubtitle.split('\n');
+    lines.forEach((line, index) => {
+      const y = canvas.height / 2 + 12 + index * 24;
+      ctx.strokeText(line, canvas.width / 2, y);
+      ctx.fillText(line, canvas.width / 2, y);
+    });
   }
   ctx.restore();
 }
@@ -478,8 +678,14 @@ function drawVersionTag() {
 
 function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  for (let row = 0; row < ROWS; row++) drawRow(row);
-  drawCars();
+  if (currentMode === 'classic') {
+    drawClassicRows();
+    drawClassicCars();
+  } else if (currentMode === 'endless') {
+    drawEndlessRows();
+  } else {
+    return;
+  }
   drawPlayer();
   drawSniper();
   drawKillEffect();
@@ -490,14 +696,11 @@ function render() {
 function loop(timestamp = 0) {
   const deltaSeconds = Math.min(0.05, (timestamp - lastTime) / 1000 || 0.016);
   lastTime = timestamp;
-  update(deltaSeconds);
+  if (currentMode === 'classic') updateClassic(deltaSeconds);
+  else if (currentMode === 'endless') updateEndless(deltaSeconds);
   render();
   requestAnimationFrame(loop);
 }
 
-const initialDiff = getDifficultyConfig();
-statusEl.textContent = initialDiff.spawnDelay === 0
-  ? `当前难度：${initialDiff.label}。狙击手已在开局出现。当前版本: ${BUILD_TAG}`
-  : `当前难度：${initialDiff.label}。狙击手会在 ${initialDiff.spawnDelay} 秒后随机现身。当前版本: ${BUILD_TAG}`;
-resetGame();
+showModeSelect();
 loop();
