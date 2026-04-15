@@ -27,7 +27,7 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.1.6';
+const BUILD_TAG = '3.1.7beta.1';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -104,10 +104,11 @@ let resultStyle = 'lose';
 let killEffect = null;
 let invincibleTime = 0;
 let endlessRows = [];
+let endlessRowMap = new Map();
+let endlessWorldRowStart = -1;
 let endlessScore = 0;
 let endlessCoins = 0;
 let endlessSniperCooldown = ENDLESS_SNIPE_INTERVAL;
-let endlessPatternCursor = 0;
 
 function getDifficultyConfig() {
   return DIFFICULTIES[currentDifficulty];
@@ -209,10 +210,35 @@ function resetClassicMode() {
   updateClassicHud();
 }
 
-function createNextEndlessRow(y) {
-  const type = endlessPatternCursor === 0 ? 'road' : 'safe';
-  endlessPatternCursor = (endlessPatternCursor + 1) % 3;
-  return type === 'road' ? createEndlessRoadRow(y) : createEndlessSafeRow(y);
+function getEndlessRowType(worldRow) {
+  return Math.abs(worldRow % 3) === 1 ? 'road' : 'safe';
+}
+
+function createEndlessRowForWorld(worldRow) {
+  const type = getEndlessRowType(worldRow);
+  const row = type === 'road' ? createEndlessRoadRow(0) : createEndlessSafeRow(0);
+  row.worldRow = worldRow;
+  return row;
+}
+
+function syncEndlessRows() {
+  endlessRows = [];
+  for (let screenRow = 0; screenRow < ROWS + 2; screenRow++) {
+    const worldRow = endlessWorldRowStart + screenRow;
+    let row = endlessRowMap.get(worldRow);
+    if (!row) {
+      row = createEndlessRowForWorld(worldRow);
+      endlessRowMap.set(worldRow, row);
+    }
+    row.y = (screenRow - 1) * TILE;
+    endlessRows.push(row);
+  }
+
+  const minKeep = endlessWorldRowStart - 2;
+  const maxKeep = endlessWorldRowStart + ROWS + 3;
+  for (const key of Array.from(endlessRowMap.keys())) {
+    if (key < minKeep || key > maxKeep) endlessRowMap.delete(key);
+  }
 }
 
 function resetEndlessMode() {
@@ -221,10 +247,11 @@ function resetEndlessMode() {
   player = { col: Math.floor(COLS / 2), row: ROWS - 1 };
   cars = [];
   endlessRows = [];
+  endlessRowMap = new Map();
+  endlessWorldRowStart = -1;
   endlessScore = 0;
   endlessCoins = 0;
   endlessSniperCooldown = ENDLESS_SNIPE_INTERVAL;
-  endlessPatternCursor = 0;
   sniper = {
     x: canvas.width / 2,
     y: 60,
@@ -237,10 +264,7 @@ function resetEndlessMode() {
     spawned: true,
     spawnCountdown: 0
   };
-  for (let i = 0; i < ROWS + 4; i++) {
-    const y = i * TILE - TILE;
-    endlessRows.push(createNextEndlessRow(y));
-  }
+  syncEndlessRows();
   statusEl.textContent = '无尽模式开始，地图会按 1 行马路 + 2 行安全路永久循环生成。';
   updateEndlessHud();
 }
@@ -270,7 +294,7 @@ function buildClassicCars() {
   }
 }
 
-function createEndlessRoadRow(y) {
+function createEndlessRoadRow(y = 0) {
   const gapWidth = 2 + Math.floor(Math.random() * 2);
   const minStart = 1;
   const maxStart = COLS - gapWidth - 1;
@@ -291,7 +315,7 @@ function createEndlessRoadRow(y) {
   return { y, type: 'road', segments, coin };
 }
 
-function createEndlessSafeRow(y) {
+function createEndlessSafeRow(y = 0) {
   return { y, type: 'safe', segments: [], coin: null };
 }
 
@@ -304,10 +328,13 @@ function playDefeatSound() {
 
 function triggerLose(message, cause = 'sniper') {
   const target = getPlayerCenter();
+  const endlessSubtitle = cause === 'scroll'
+    ? '你太慢了。'
+    : (DEATH_SUBTITLE_MAP[cause] || '你被创飞了');
   gameOver = true;
   resultText = currentMode === 'endless' ? '游戏结束' : '失败';
   resultSubtitle = currentMode === 'endless'
-    ? `${DEATH_SUBTITLE_MAP[cause] || '你被创飞了'}\n分数 ${endlessScore.toFixed(3)} | 时间 ${elapsedTime.toFixed(2)}s | 金币 ${endlessCoins} | 最高分 ${endlessBest.toFixed(3)}`
+    ? `${endlessSubtitle}\n分数 ${endlessScore.toFixed(3)} | 时间 ${elapsedTime.toFixed(2)}s | 金币 ${endlessCoins} | 最高分 ${endlessBest.toFixed(3)}`
     : (DEATH_SUBTITLE_MAP[cause] || '你被创飞了');
   resultStyle = 'lose';
   statusEl.textContent = message;
@@ -467,16 +494,21 @@ function updateEndless(deltaSeconds) {
       localStorage.setItem('crossyEndlessBest', String(endlessBest));
     }
 
-    endlessRows.forEach((row) => { row.y += deltaY; });
-    while (endlessRows.length && endlessRows[0].y >= canvas.height) {
-      endlessRows.shift();
-      const newY = endlessRows.length ? endlessRows[endlessRows.length - 1].y - TILE : -TILE;
-      endlessRows.push(createNextEndlessRow(newY));
-      player.row += 1;
-      if (player.row >= ROWS) {
-        triggerLose('你被地图卷出屏幕了。', 'sniper');
-        break;
+    let travel = deltaY;
+    while (travel > 0) {
+      const step = Math.min(travel, TILE);
+      endlessRows.forEach((row) => { row.y += step; });
+      travel -= step;
+      while (endlessRows.length && endlessRows[0].y >= canvas.height) {
+        endlessWorldRowStart += 1;
+        syncEndlessRows();
+        player.row += 1;
+        if (player.row >= ROWS) {
+          triggerLose('你被地图卷出屏幕了。', 'scroll');
+          break;
+        }
       }
+      if (gameOver) break;
     }
 
     const playerCenter = getPlayerCenter();
