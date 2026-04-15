@@ -12,6 +12,7 @@ const classicModeBtn = document.getElementById('classicModeBtn');
 const endlessModeBtn = document.getElementById('endlessModeBtn');
 const backToModesBtn = document.getElementById('backToModesBtn');
 const classicControlsEl = document.getElementById('classicControls');
+const homeVersionTagEl = document.getElementById('homeVersionTag');
 const classicHudEl = document.getElementById('classicHud');
 const endlessHudEl = document.getElementById('endlessHud');
 const endlessTimerEl = document.getElementById('endlessTimer');
@@ -26,7 +27,7 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.1.0';
+const BUILD_TAG = '3.1.3';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -206,7 +207,7 @@ function resetClassicMode() {
 
 function resetEndlessMode() {
   resetSharedState();
-  player = { col: Math.floor(COLS / 2), row: ROWS - 3 };
+  player = { col: Math.floor(COLS / 2), row: ROWS - 1 };
   cars = [];
   endlessRows = [];
   endlessScore = 0;
@@ -224,8 +225,10 @@ function resetEndlessMode() {
     spawned: true,
     spawnCountdown: 0
   };
-  for (let i = 0; i < ROWS + 2; i++) {
-    endlessRows.push(createEndlessRow(i * TILE - TILE));
+  for (let i = 0; i < ROWS + 4; i++) {
+    const patternIndex = i % 3;
+    const y = i * TILE - TILE;
+    endlessRows.push(patternIndex === 0 ? createEndlessRoadRow(y) : createEndlessSafeRow(y));
   }
   statusEl.textContent = '无尽模式开始，躲避障碍，拾取金币。';
   updateEndlessHud();
@@ -256,7 +259,7 @@ function buildClassicCars() {
   }
 }
 
-function createEndlessRow(y) {
+function createEndlessRoadRow(y) {
   const gapWidth = 2 + Math.floor(Math.random() * 2);
   const minStart = 1;
   const maxStart = COLS - gapWidth - 1;
@@ -274,7 +277,11 @@ function createEndlessRow(y) {
     col: gapStart + Math.floor(gapWidth / 2),
     collected: false
   } : null;
-  return { y, gapStart, gapWidth, dir, segments, coin };
+  return { y, type: 'road', segments, coin };
+}
+
+function createEndlessSafeRow(y) {
+  return { y, type: 'safe', segments: [], coin: null };
 }
 
 function playDefeatSound() {
@@ -451,7 +458,8 @@ function updateEndless(deltaSeconds) {
     while (endlessRows.length && endlessRows[0].y >= canvas.height) {
       endlessRows.shift();
       const newY = endlessRows.length ? endlessRows[endlessRows.length - 1].y - TILE : -TILE;
-      endlessRows.push(createEndlessRow(newY));
+      const patternIndex = endlessRows.length % 3;
+      endlessRows.push(patternIndex === 0 ? createEndlessRoadRow(newY) : createEndlessSafeRow(newY));
       player.row += 1;
       if (player.row >= ROWS) {
         triggerLose('你被地图卷出屏幕了。', 'sniper');
@@ -484,6 +492,7 @@ function updateEndless(deltaSeconds) {
     for (const row of endlessRows) {
       const y = row.y;
       if (y < -TILE || y > canvas.height) continue;
+      if (row.type === 'safe') continue;
       for (const seg of row.segments) {
         const x = seg.col * TILE;
         if (playerRect.x < x + TILE && playerRect.x + playerRect.w > x && playerRect.y < y + TILE && playerRect.y + playerRect.h > y) {
@@ -538,6 +547,11 @@ function drawEndlessRows() {
   for (const row of endlessRows) {
     const y = row.y;
     if (y < -TILE || y > canvas.height) continue;
+    if (row.type === 'safe') {
+      ctx.fillStyle = '#9ae66e';
+      ctx.fillRect(0, y, canvas.width, TILE);
+      continue;
+    }
     ctx.fillStyle = '#4b5563';
     ctx.fillRect(0, y, canvas.width, TILE);
     ctx.strokeStyle = '#fbbf24';
