@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>过马路 v3.0.0</title>
-  <link rel="stylesheet" href="styles.css?v=300" />
+  <link rel="stylesheet" href="styles.css?v=310" />
 </head>
 <body>
   <div class="wrap">
@@ -23,6 +23,7 @@
     <section id="gameScreen" class="game-screen hidden">
       <h1 id="gameTitle">过马路（经典版）</h1>
       <p class="hint" id="gameHint">方向键 / WASD 移动，R 重新开始</p>
+      <button id="backToModesBtn" class="back-btn">返回模式选择</button>
       <div class="controls" id="classicControls">
         <label for="difficulty">难度</label>
         <select id="difficulty">
@@ -64,6 +65,17 @@
             <div class="log-scroll">
               <div class="log-block latest">
                 <div class="log-head">
+                  <h3>v3.1.0</h3>
+                  <span>2026-04-14</span>
+                </div>
+                <ul>
+                  <li>修复无尽模式地图滚动异常</li>
+                  <li>修复无尽模式狙击点 5 秒追踪攻击逻辑</li>
+                  <li>新增返回模式选择按钮</li>
+                </ul>
+              </div>
+              <div class="log-block">
+                <div class="log-head">
                   <h3>v3.0.0</h3>
                   <span>2026-04-14</span>
                 </div>
@@ -100,6 +112,6 @@
       </div>
     </section>
   </div>
-  <script src="script.js?v=300"></script>
+  <script src="script.js?v=310"></script>
 </body>
 </html>

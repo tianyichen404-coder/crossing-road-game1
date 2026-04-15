@@ -54,6 +54,17 @@ h1 { margin: 0; }
   align-items: center;
   gap: 10px;
 }
+.back-btn {
+  border: none;
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-size: 16px;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(180deg, #475569, #1e293b);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+  cursor: pointer;
+}
 .controls {
   display: flex;
   align-items: center;

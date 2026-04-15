@@ -10,6 +10,7 @@ const modeSelectEl = document.getElementById('modeSelect');
 const gameScreenEl = document.getElementById('gameScreen');
 const classicModeBtn = document.getElementById('classicModeBtn');
 const endlessModeBtn = document.getElementById('endlessModeBtn');
+const backToModesBtn = document.getElementById('backToModesBtn');
 const classicControlsEl = document.getElementById('classicControls');
 const classicHudEl = document.getElementById('classicHud');
 const endlessHudEl = document.getElementById('endlessHud');
@@ -25,7 +26,7 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.0.0';
+const BUILD_TAG = '3.1.0';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -100,11 +101,9 @@ let resultSubtitle = '';
 let resultStyle = 'lose';
 let killEffect = null;
 let endlessRows = [];
-let endlessScroll = 0;
 let endlessScore = 0;
 let endlessCoins = 0;
 let endlessSniperCooldown = ENDLESS_SNIPE_INTERVAL;
-let endlessResult = null;
 
 function getDifficultyConfig() {
   return DIFFICULTIES[currentDifficulty];
@@ -124,7 +123,6 @@ function resetSharedState() {
   resultText = '';
   resultSubtitle = '';
   killEffect = null;
-  endlessResult = null;
   lastTime = 0;
 }
 
@@ -211,24 +209,23 @@ function resetEndlessMode() {
   player = { col: Math.floor(COLS / 2), row: ROWS - 3 };
   cars = [];
   endlessRows = [];
-  endlessScroll = 0;
   endlessScore = 0;
   endlessCoins = 0;
   endlessSniperCooldown = ENDLESS_SNIPE_INTERVAL;
   sniper = {
-    x: 60,
+    x: canvas.width / 2,
     y: 60,
     aimTime: 0,
     firing: false,
     shotTimer: 0,
     shotLine: null,
     moveFactor: 1,
-    aimSeconds: 0.5,
+    aimSeconds: 0,
     spawned: true,
     spawnCountdown: 0
   };
-  for (let i = 0; i < ROWS + 3; i++) {
-    endlessRows.push(createEndlessRow(-i * TILE));
+  for (let i = 0; i < ROWS + 2; i++) {
+    endlessRows.push(createEndlessRow(i * TILE - TILE));
   }
   statusEl.textContent = '无尽模式开始，躲避障碍，拾取金币。';
   updateEndlessHud();
@@ -271,12 +268,7 @@ function createEndlessRow(y) {
   for (let col = 0; col < COLS; col++) {
     if (col >= gapStart && col < gapStart + gapWidth) continue;
     const idx = Math.floor(Math.random() * 3);
-    segments.push({
-      col,
-      width: 1,
-      image: spriteSet[idx],
-      label: nameSet[idx]
-    });
+    segments.push({ col, image: spriteSet[idx], label: nameSet[idx] });
   }
   const coin = Math.random() < ENDLESS_COIN_CHANCE ? {
     col: gapStart + Math.floor(gapWidth / 2),
@@ -373,6 +365,7 @@ if (mobileControlsEl) {
 
 classicModeBtn.addEventListener('click', startClassicMode);
 endlessModeBtn.addEventListener('click', startEndlessMode);
+backToModesBtn.addEventListener('click', showModeSelect);
 difficultyEl.addEventListener('change', () => {
   currentDifficulty = difficultyEl.value;
   if (currentMode === 'classic') resetClassicMode();
@@ -447,57 +440,61 @@ function updateEndless(deltaSeconds) {
   if (!gameOver) {
     elapsedTime += deltaSeconds;
     const scrollSpeed = 1 + Math.floor(elapsedTime / 60) * ENDLESS_SCROLL_GROWTH_PER_MIN;
-    endlessScroll += scrollSpeed * deltaSeconds * 60;
+    const deltaY = scrollSpeed * deltaSeconds * 60;
     endlessScore += ENDLESS_SCORE_PER_SEC * deltaSeconds;
     if (endlessScore > endlessBest) {
       endlessBest = endlessScore;
       localStorage.setItem('crossyEndlessBest', String(endlessBest));
     }
-    while (endlessScroll >= TILE) {
-      endlessScroll -= TILE;
+
+    endlessRows.forEach((row) => { row.y += deltaY; });
+    while (endlessRows.length && endlessRows[0].y >= canvas.height) {
       endlessRows.shift();
-      const topY = endlessRows.length ? endlessRows[endlessRows.length - 1].y - TILE : -TILE;
-      endlessRows.push(createEndlessRow(topY));
+      const newY = endlessRows.length ? endlessRows[endlessRows.length - 1].y - TILE : -TILE;
+      endlessRows.push(createEndlessRow(newY));
       player.row += 1;
       if (player.row >= ROWS) {
         triggerLose('你被地图卷出屏幕了。', 'sniper');
+        break;
       }
     }
-    endlessRows.forEach((row) => {
-      row.y += scrollSpeed * deltaSeconds * 60;
-    });
+
+    const playerCenter = getPlayerCenter();
+    const timeToShot = Math.max(0.01, endlessSniperCooldown);
+    const followFactor = Math.min(1, deltaSeconds / timeToShot);
+    sniper.x += (playerCenter.x - sniper.x) * followFactor;
+    sniper.y += (playerCenter.y - sniper.y) * followFactor;
     endlessSniperCooldown -= deltaSeconds;
-    const target = getPlayerCenter();
-    const followSpeed = 0.018;
-    sniper.x += (target.x - sniper.x) * followSpeed * deltaSeconds * 60;
-    sniper.y += (target.y - sniper.y) * followSpeed * deltaSeconds * 60;
     if (endlessSniperCooldown <= 0) {
       endlessSniperCooldown = ENDLESS_SNIPE_INTERVAL;
       sniper.shotTimer = 0.22;
-      sniper.shotLine = { fromX: sniper.x, fromY: sniper.y, toX: target.x, toY: target.y };
-      if (Math.hypot(target.x - sniper.x, target.y - sniper.y) <= 28) {
+      sniper.shotLine = { fromX: sniper.x, fromY: sniper.y, toX: playerCenter.x, toY: playerCenter.y };
+      if (Math.hypot(playerCenter.x - sniper.x, playerCenter.y - sniper.y) <= SNIPER_LOCK_DISTANCE) {
         triggerLose('你被狙击手击中了。', 'sniper');
       }
     }
+
     const playerRect = {
       x: player.col * TILE + 4,
       y: player.row * TILE + 4,
       w: TILE - 8,
       h: TILE - 8
     };
+
     for (const row of endlessRows) {
-      const screenY = row.y + endlessScroll;
-      if (screenY < -TILE || screenY > canvas.height) continue;
+      const y = row.y;
+      if (y < -TILE || y > canvas.height) continue;
       for (const seg of row.segments) {
-        const segX = seg.col * TILE;
-        if (playerRect.x < segX + TILE && playerRect.x + playerRect.w > segX && playerRect.y < screenY + TILE && playerRect.y + playerRect.h > screenY) {
+        const x = seg.col * TILE;
+        if (playerRect.x < x + TILE && playerRect.x + playerRect.w > x && playerRect.y < y + TILE && playerRect.y + playerRect.h > y) {
           triggerLose('你撞到了障碍物。', seg.label);
           break;
         }
       }
+      if (gameOver) break;
       if (row.coin && !row.coin.collected) {
         const coinX = row.coin.col * TILE + 10;
-        const coinY = screenY + 8;
+        const coinY = y + 8;
         if (playerRect.x < coinX + 20 && playerRect.x + playerRect.w > coinX && playerRect.y < coinY + 20 && playerRect.y + playerRect.h > coinY) {
           row.coin.collected = true;
           endlessCoins += 1;
@@ -539,7 +536,7 @@ function drawClassicRows() {
 
 function drawEndlessRows() {
   for (const row of endlessRows) {
-    const y = row.y + endlessScroll;
+    const y = row.y;
     if (y < -TILE || y > canvas.height) continue;
     ctx.fillStyle = '#4b5563';
     ctx.fillRect(0, y, canvas.width, TILE);
