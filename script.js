@@ -27,7 +27,7 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.1.3';
+const BUILD_TAG = '3.1.4';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -39,7 +39,8 @@ const COIN_SPRITE = 'assets-coin.gif';
 const ENDLESS_SCORE_PER_SEC = 1.234;
 const ENDLESS_COIN_CHANCE = 0.333;
 const ENDLESS_SCROLL_GROWTH_PER_MIN = 0.15;
-const ENDLESS_SNIPE_INTERVAL = 5;
+const ENDLESS_SNIPE_INTERVAL = 3;
+const RESPAWN_INVINCIBLE_SECONDS = 3.1;
 
 const DIFFICULTIES = {
   easy: { label: '简单', carMultiplier: 1, sniperMove: 1, aimSeconds: 1, spawnDelay: 0 },
@@ -101,6 +102,7 @@ let resultText = '';
 let resultSubtitle = '';
 let resultStyle = 'lose';
 let killEffect = null;
+let invincibleTime = 0;
 let endlessRows = [];
 let endlessScore = 0;
 let endlessCoins = 0;
@@ -183,6 +185,7 @@ function startEndlessMode() {
 function resetClassicMode() {
   const diff = getDifficultyConfig();
   resetSharedState();
+  invincibleTime = RESPAWN_INVINCIBLE_SECONDS;
   player = { col: Math.floor(COLS / 2), row: ROWS - 1 };
   cars = [];
   const spawn = randomSpawnPoint();
@@ -207,6 +210,7 @@ function resetClassicMode() {
 
 function resetEndlessMode() {
   resetSharedState();
+  invincibleTime = RESPAWN_INVINCIBLE_SECONDS;
   player = { col: Math.floor(COLS / 2), row: ROWS - 1 };
   cars = [];
   endlessRows = [];
@@ -423,7 +427,7 @@ function updateClassicCars(deltaSeconds) {
     if (car.row === player.row) {
       const px = player.col * TILE + TILE / 2;
       const py = player.row * TILE + TILE / 2;
-      if (px > car.x - car.width / 2 && px < car.x + car.width / 2 && py > car.row * TILE + 4 && py < car.row * TILE + TILE - 4) {
+      if (invincibleTime <= 0 && px > car.x - car.width / 2 && px < car.x + car.width / 2 && py > car.row * TILE + 4 && py < car.row * TILE + TILE - 4) {
         triggerLose('撞到了，按 R 重新开始。', car.label);
       }
     }
@@ -433,6 +437,7 @@ function updateClassicCars(deltaSeconds) {
 function updateClassic(deltaSeconds) {
   if (!gameOver) {
     elapsedTime += deltaSeconds;
+    invincibleTime = Math.max(0, invincibleTime - deltaSeconds);
     updateClassicCars(deltaSeconds);
     updateClassicSniper(deltaSeconds);
     if (!gameOver && player.row === 0) triggerWin();
@@ -446,6 +451,7 @@ function updateClassic(deltaSeconds) {
 function updateEndless(deltaSeconds) {
   if (!gameOver) {
     elapsedTime += deltaSeconds;
+    invincibleTime = Math.max(0, invincibleTime - deltaSeconds);
     const scrollSpeed = 1 + Math.floor(elapsedTime / 60) * ENDLESS_SCROLL_GROWTH_PER_MIN;
     const deltaY = scrollSpeed * deltaSeconds * 60;
     endlessScore += ENDLESS_SCORE_PER_SEC * deltaSeconds;
@@ -469,7 +475,7 @@ function updateEndless(deltaSeconds) {
 
     const playerCenter = getPlayerCenter();
     const timeToShot = Math.max(0.01, endlessSniperCooldown);
-    const followFactor = Math.min(1, deltaSeconds / timeToShot);
+    const followFactor = Math.min(1, (deltaSeconds / timeToShot) * 0.5);
     sniper.x += (playerCenter.x - sniper.x) * followFactor;
     sniper.y += (playerCenter.y - sniper.y) * followFactor;
     endlessSniperCooldown -= deltaSeconds;
@@ -477,7 +483,7 @@ function updateEndless(deltaSeconds) {
       endlessSniperCooldown = ENDLESS_SNIPE_INTERVAL;
       sniper.shotTimer = 0.22;
       sniper.shotLine = { fromX: sniper.x, fromY: sniper.y, toX: playerCenter.x, toY: playerCenter.y };
-      if (Math.hypot(playerCenter.x - sniper.x, playerCenter.y - sniper.y) <= SNIPER_LOCK_DISTANCE) {
+      if (invincibleTime <= 0 && Math.hypot(playerCenter.x - sniper.x, playerCenter.y - sniper.y) <= SNIPER_LOCK_DISTANCE) {
         triggerLose('你被狙击手击中了。', 'sniper');
       }
     }
@@ -495,7 +501,7 @@ function updateEndless(deltaSeconds) {
       if (row.type === 'safe') continue;
       for (const seg of row.segments) {
         const x = seg.col * TILE;
-        if (playerRect.x < x + TILE && playerRect.x + playerRect.w > x && playerRect.y < y + TILE && playerRect.y + playerRect.h > y) {
+        if (invincibleTime <= 0 && playerRect.x < x + TILE && playerRect.x + playerRect.w > x && playerRect.y < y + TILE && playerRect.y + playerRect.h > y) {
           triggerLose('你撞到了障碍物。', seg.label);
           break;
         }
