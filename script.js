@@ -11,18 +11,30 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '2.2.1';
+const BUILD_TAG = '2.2.2';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
 const LEFT_VEHICLE_SPRITES = ['assets-left-1.png', 'assets-left-2.png', 'assets-left-3.png'];
 const RIGHT_VEHICLE_SPRITES = ['assets-right-1.png', 'assets-right-2.png', 'assets-right-3.png'];
+const LEFT_VEHICLE_NAMES = ['核弹', '大运', '火箭'];
+const RIGHT_VEHICLE_NAMES = ['战斗机', '坦克', 'UFO'];
 
 const DIFFICULTIES = {
   easy: { label: '简单', carMultiplier: 1, sniperMove: 1, aimSeconds: 1, spawnDelay: 0 },
   hard: { label: '困难', carMultiplier: 2, sniperMove: 3, aimSeconds: 0.5, spawnDelay: 3 },
   extreme: { label: '极难', carMultiplier: 4, sniperMove: 5, aimSeconds: 0.3, spawnDelay: 5 },
   inferno: { label: '炼狱', carMultiplier: 8, sniperMove: 7, aimSeconds: 0, spawnDelay: 6 }
+};
+
+const DEATH_SUBTITLE_MAP = {
+  sniper: '你被狙飞了！',
+  坦克: '你被坦克碾压了!',
+  核弹: '你被核爆了',
+  大运: '你撞大运了',
+  火箭: '你被火箭撞飞了',
+  战斗机: '你被战斗机撞飞了',
+  UFO: '你被外星人带走了'
 };
 
 const playerImage = new Image();
@@ -60,6 +72,7 @@ let sniper;
 let lastTime = 0;
 let elapsedTime = 0;
 let resultText = '';
+let resultSubtitle = '';
 let resultStyle = 'lose';
 let killEffect = null;
 
@@ -95,6 +108,7 @@ function resetGame() {
   elapsedTime = 0;
   gameOver = false;
   resultText = '';
+  resultSubtitle = '';
   killEffect = null;
   const spawn = randomSpawnPoint();
   sniper = {
@@ -125,6 +139,7 @@ function buildCars() {
     const baseSpeed = 1.2 + (ROWS - row) * 0.03;
     const speed = baseSpeed * diff.carMultiplier;
     const spriteSet = dir > 0 ? rightVehicleImages : leftVehicleImages;
+    const nameSet = dir > 0 ? RIGHT_VEHICLE_NAMES : LEFT_VEHICLE_NAMES;
     for (let i = 0; i < 3; i++) {
       cars.push({
         row,
@@ -134,7 +149,8 @@ function buildCars() {
         dir,
         speed,
         spriteIndex: i % 3,
-        image: spriteSet[i % 3]
+        image: spriteSet[i % 3],
+        label: nameSet[i % 3]
       });
     }
   }
@@ -147,10 +163,11 @@ function playDefeatSound() {
   } catch {}
 }
 
-function triggerLose(message) {
+function triggerLose(message, cause = 'sniper') {
   const target = getPlayerCenter();
   gameOver = true;
   resultText = '失败';
+  resultSubtitle = DEATH_SUBTITLE_MAP[cause] || '你被创飞了';
   resultStyle = 'lose';
   statusEl.textContent = message;
   playDefeatSound();
@@ -167,6 +184,7 @@ function triggerLose(message) {
 function triggerWin() {
   gameOver = true;
   resultText = '胜利';
+  resultSubtitle = '';
   resultStyle = 'win';
   statusEl.textContent = `成功过马路了，用时 ${elapsedTime.toFixed(2)} 秒，按 R 再来一局。`;
 }
@@ -229,7 +247,7 @@ function updateSniper(deltaSeconds) {
         sniper.firing = true;
         sniper.shotTimer = 0.22;
         sniper.shotLine = { fromX: sniper.x, fromY: sniper.y, toX: target.x, toY: target.y };
-        triggerLose('炼狱狙击瞬间命中，你已经死亡。按 R 重新开始。');
+        triggerLose('炼狱狙击瞬间命中，你已经死亡。按 R 重新开始。', 'sniper');
         return;
       }
       const remaining = Math.max(0, sniper.aimSeconds - sniper.aimTime).toFixed(1);
@@ -238,7 +256,7 @@ function updateSniper(deltaSeconds) {
         sniper.firing = true;
         sniper.shotTimer = 0.22;
         sniper.shotLine = { fromX: sniper.x, fromY: sniper.y, toX: target.x, toY: target.y };
-        triggerLose('你被狙击手击中了，按 R 重新开始。');
+        triggerLose('你被狙击手击中了，按 R 重新开始。', 'sniper');
       }
     } else {
       sniper.aimTime = 0;
@@ -263,7 +281,7 @@ function updateCars(deltaSeconds) {
         py > car.row * TILE + 4 &&
         py < car.row * TILE + TILE - 4
       ) {
-        triggerLose('撞到了，按 R 重新开始。');
+        triggerLose('撞到了，按 R 重新开始。', car.label);
       }
     }
   }
@@ -402,8 +420,6 @@ function drawResultText() {
   if (!resultText) return;
   ctx.save();
   ctx.textAlign = 'center';
-  ctx.font = 'bold 64px Microsoft YaHei, Arial';
-  ctx.lineWidth = 6;
   if (resultStyle === 'win') {
     ctx.fillStyle = '#ffd700';
     ctx.strokeStyle = '#9a6700';
@@ -414,8 +430,17 @@ function drawResultText() {
     ctx.shadowColor = 'rgba(107, 114, 128, 0.65)';
   }
   ctx.shadowBlur = 16;
-  ctx.strokeText(resultText, canvas.width / 2, canvas.height / 2);
-  ctx.fillText(resultText, canvas.width / 2, canvas.height / 2);
+  ctx.font = 'bold 64px Microsoft YaHei, Arial';
+  ctx.lineWidth = 6;
+  ctx.strokeText(resultText, canvas.width / 2, canvas.height / 2 - (resultSubtitle ? 20 : 0));
+  ctx.fillText(resultText, canvas.width / 2, canvas.height / 2 - (resultSubtitle ? 20 : 0));
+
+  if (resultSubtitle) {
+    ctx.font = 'bold 28px Microsoft YaHei, Arial';
+    ctx.lineWidth = 4;
+    ctx.strokeText(resultSubtitle, canvas.width / 2, canvas.height / 2 + 24);
+    ctx.fillText(resultSubtitle, canvas.width / 2, canvas.height / 2 + 24);
+  }
   ctx.restore();
 }
 
