@@ -27,7 +27,7 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.1.5';
+const BUILD_TAG = '3.1.6';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -107,6 +107,7 @@ let endlessRows = [];
 let endlessScore = 0;
 let endlessCoins = 0;
 let endlessSniperCooldown = ENDLESS_SNIPE_INTERVAL;
+let endlessPatternCursor = 0;
 
 function getDifficultyConfig() {
   return DIFFICULTIES[currentDifficulty];
@@ -208,6 +209,12 @@ function resetClassicMode() {
   updateClassicHud();
 }
 
+function createNextEndlessRow(y) {
+  const type = endlessPatternCursor === 0 ? 'road' : 'safe';
+  endlessPatternCursor = (endlessPatternCursor + 1) % 3;
+  return type === 'road' ? createEndlessRoadRow(y) : createEndlessSafeRow(y);
+}
+
 function resetEndlessMode() {
   resetSharedState();
   invincibleTime = RESPAWN_INVINCIBLE_SECONDS;
@@ -217,6 +224,7 @@ function resetEndlessMode() {
   endlessScore = 0;
   endlessCoins = 0;
   endlessSniperCooldown = ENDLESS_SNIPE_INTERVAL;
+  endlessPatternCursor = 0;
   sniper = {
     x: canvas.width / 2,
     y: 60,
@@ -230,11 +238,10 @@ function resetEndlessMode() {
     spawnCountdown: 0
   };
   for (let i = 0; i < ROWS + 4; i++) {
-    const patternIndex = i % 3;
     const y = i * TILE - TILE;
-    endlessRows.push(patternIndex === 0 ? createEndlessRoadRow(y) : createEndlessSafeRow(y));
+    endlessRows.push(createNextEndlessRow(y));
   }
-  statusEl.textContent = '无尽模式开始，躲避障碍，拾取金币。';
+  statusEl.textContent = '无尽模式开始，地图会按 1 行马路 + 2 行安全路永久循环生成。';
   updateEndlessHud();
 }
 
@@ -464,8 +471,7 @@ function updateEndless(deltaSeconds) {
     while (endlessRows.length && endlessRows[0].y >= canvas.height) {
       endlessRows.shift();
       const newY = endlessRows.length ? endlessRows[endlessRows.length - 1].y - TILE : -TILE;
-      const patternIndex = endlessRows.length % 3;
-      endlessRows.push(patternIndex === 0 ? createEndlessRoadRow(newY) : createEndlessSafeRow(newY));
+      endlessRows.push(createNextEndlessRow(newY));
       player.row += 1;
       if (player.row >= ROWS) {
         triggerLose('你被地图卷出屏幕了。', 'sniper');
