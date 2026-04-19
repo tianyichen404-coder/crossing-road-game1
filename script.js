@@ -27,7 +27,7 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.1.7beta2.2';
+const BUILD_TAG = '3.1.7beta2.3';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -237,21 +237,21 @@ function getEndlessRowByWorld(worldRow) {
 function rebuildEndlessRows() {
   endlessRows = [];
   for (let index = 0; index < ROWS + 4; index++) {
-    const worldRow = endlessWorldRowStart - index;
+    const worldRow = endlessWorldRowStart + index;
     const row = getEndlessRowByWorld(worldRow);
     row.worldRow = worldRow;
     endlessRows.push(row);
   }
 
-  const minKeep = endlessWorldRowStart - (ROWS + 8);
-  const maxKeep = endlessWorldRowStart + 2;
+  const minKeep = endlessWorldRowStart - 2;
+  const maxKeep = endlessWorldRowStart + ROWS + 8;
   for (const key of Array.from(endlessRowMap.keys())) {
     if (key < minKeep || key > maxKeep) endlessRowMap.delete(key);
   }
 }
 
 function getEndlessRowY(index) {
-  return canvas.height - TILE - endlessScrollOffset - index * TILE;
+  return canvas.height - TILE + endlessScrollOffset - index * TILE;
 }
 
 function resetEndlessMode() {
