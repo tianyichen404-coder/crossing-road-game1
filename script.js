@@ -27,7 +27,7 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.1.7beta.1';
+const BUILD_TAG = '3.1.7beta2';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -40,7 +40,9 @@ const ENDLESS_SCORE_PER_SEC = 1.234;
 const ENDLESS_COIN_CHANCE = 0.333;
 const ENDLESS_SCROLL_GROWTH_PER_MIN = 0.15;
 const ENDLESS_SNIPE_INTERVAL = 3;
-const RESPAWN_INVINCIBLE_SECONDS = 3.1;
+const CLASSIC_RESPAWN_INVINCIBLE_SECONDS = 0;
+const ENDLESS_RESPAWN_INVINCIBLE_SECONDS = 3.1;
+const ENDLESS_START_COUNTDOWN_SECONDS = 5;
 
 const DIFFICULTIES = {
   easy: { label: '简单', carMultiplier: 1, sniperMove: 1, aimSeconds: 1, spawnDelay: 0 },
@@ -105,10 +107,11 @@ let killEffect = null;
 let invincibleTime = 0;
 let endlessRows = [];
 let endlessRowMap = new Map();
-let endlessWorldRowStart = -1;
+let endlessWorldRowStart = 0;
 let endlessScore = 0;
 let endlessCoins = 0;
 let endlessSniperCooldown = ENDLESS_SNIPE_INTERVAL;
+let endlessStartCountdown = 0;
 
 function getDifficultyConfig() {
   return DIFFICULTIES[currentDifficulty];
@@ -187,7 +190,7 @@ function startEndlessMode() {
 function resetClassicMode() {
   const diff = getDifficultyConfig();
   resetSharedState();
-  invincibleTime = RESPAWN_INVINCIBLE_SECONDS;
+  invincibleTime = CLASSIC_RESPAWN_INVINCIBLE_SECONDS;
   player = { col: Math.floor(COLS / 2), row: ROWS - 1 };
   cars = [];
   const spawn = randomSpawnPoint();
@@ -211,7 +214,7 @@ function resetClassicMode() {
 }
 
 function getEndlessRowType(worldRow) {
-  return Math.abs(worldRow % 3) === 1 ? 'road' : 'safe';
+  return ((worldRow % 3) + 3) % 3 === 2 ? 'road' : 'safe';
 }
 
 function createEndlessRowForWorld(worldRow) {
@@ -221,21 +224,27 @@ function createEndlessRowForWorld(worldRow) {
   return row;
 }
 
+function getEndlessRowByWorld(worldRow) {
+  let row = endlessRowMap.get(worldRow);
+  if (!row) {
+    row = createEndlessRowForWorld(worldRow);
+    endlessRowMap.set(worldRow, row);
+  }
+  return row;
+}
+
 function syncEndlessRows() {
   endlessRows = [];
-  for (let screenRow = 0; screenRow < ROWS + 2; screenRow++) {
-    const worldRow = endlessWorldRowStart + screenRow;
-    let row = endlessRowMap.get(worldRow);
-    if (!row) {
-      row = createEndlessRowForWorld(worldRow);
-      endlessRowMap.set(worldRow, row);
-    }
-    row.y = (screenRow - 1) * TILE;
+  for (let screenRow = 0; screenRow <= ROWS; screenRow++) {
+    const worldRow = endlessWorldRowStart + (ROWS - 1 - screenRow);
+    const row = getEndlessRowByWorld(worldRow);
+    row.worldRow = worldRow;
+    row.y = canvas.height - (screenRow + 1) * TILE;
     endlessRows.push(row);
   }
 
-  const minKeep = endlessWorldRowStart - 2;
-  const maxKeep = endlessWorldRowStart + ROWS + 3;
+  const minKeep = endlessWorldRowStart - (ROWS + 4);
+  const maxKeep = endlessWorldRowStart + 4;
   for (const key of Array.from(endlessRowMap.keys())) {
     if (key < minKeep || key > maxKeep) endlessRowMap.delete(key);
   }
@@ -243,15 +252,16 @@ function syncEndlessRows() {
 
 function resetEndlessMode() {
   resetSharedState();
-  invincibleTime = RESPAWN_INVINCIBLE_SECONDS;
+  invincibleTime = ENDLESS_RESPAWN_INVINCIBLE_SECONDS;
   player = { col: Math.floor(COLS / 2), row: ROWS - 1 };
   cars = [];
   endlessRows = [];
   endlessRowMap = new Map();
-  endlessWorldRowStart = -1;
+  endlessWorldRowStart = 0;
   endlessScore = 0;
   endlessCoins = 0;
   endlessSniperCooldown = ENDLESS_SNIPE_INTERVAL;
+  endlessStartCountdown = ENDLESS_START_COUNTDOWN_SECONDS;
   sniper = {
     x: canvas.width / 2,
     y: 60,
@@ -265,7 +275,7 @@ function resetEndlessMode() {
     spawnCountdown: 0
   };
   syncEndlessRows();
-  statusEl.textContent = '无尽模式开始，地图会按 1 行马路 + 2 行安全路永久循环生成。';
+  statusEl.textContent = '无尽模式开始，底部出生点固定在安全路，地图会像流水线一样持续向下滚动。';
   updateEndlessHud();
 }
 
@@ -484,6 +494,14 @@ function updateClassic(deltaSeconds) {
 
 function updateEndless(deltaSeconds) {
   if (!gameOver) {
+    if (endlessStartCountdown > 0) {
+      endlessStartCountdown = Math.max(0, endlessStartCountdown - deltaSeconds);
+      invincibleTime = Math.max(invincibleTime, endlessStartCountdown);
+      if (sniper.shotTimer > 0) sniper.shotTimer -= deltaSeconds;
+      updateEndlessHud();
+      return;
+    }
+
     elapsedTime += deltaSeconds;
     invincibleTime = Math.max(0, invincibleTime - deltaSeconds);
     const scrollSpeed = 1 + Math.floor(elapsedTime / 60) * ENDLESS_SCROLL_GROWTH_PER_MIN;
@@ -501,12 +519,12 @@ function updateEndless(deltaSeconds) {
       travel -= step;
       while (endlessRows.length && endlessRows[0].y >= canvas.height) {
         endlessWorldRowStart += 1;
-        syncEndlessRows();
         player.row += 1;
         if (player.row >= ROWS) {
           triggerLose('你被地图卷出屏幕了。', 'scroll');
           break;
         }
+        syncEndlessRows();
       }
       if (gameOver) break;
     }
@@ -689,6 +707,27 @@ function drawKillEffect() {
   ctx.restore();
 }
 
+function drawCountdownOverlay() {
+  if (currentMode !== 'endless' || gameOver || endlessStartCountdown <= 0) return;
+  const countValue = Math.ceil(endlessStartCountdown);
+  const text = countValue > 0 ? String(countValue) : '开始';
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#facc15';
+  ctx.strokeStyle = '#9a6700';
+  ctx.shadowColor = 'rgba(250, 204, 21, 0.65)';
+  ctx.shadowBlur = 18;
+  ctx.lineWidth = 8;
+  ctx.font = '900 72px Microsoft YaHei, Arial';
+  ctx.strokeText(text, canvas.width / 2, canvas.height / 2);
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+  ctx.font = '900 28px Microsoft YaHei, Arial';
+  ctx.lineWidth = 5;
+  ctx.strokeText('准备开始', canvas.width / 2, canvas.height / 2 - 70);
+  ctx.fillText('准备开始', canvas.width / 2, canvas.height / 2 - 70);
+  ctx.restore();
+}
+
 function drawResultText() {
   if (!resultText) return;
   ctx.save();
@@ -744,6 +783,7 @@ function render() {
   drawPlayer();
   drawSniper();
   drawKillEffect();
+  drawCountdownOverlay();
   drawResultText();
   drawVersionTag();
 }
