@@ -27,7 +27,7 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.1.7beta2.3';
+const BUILD_TAG = '3.1.7beta2.4';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -521,7 +521,6 @@ function updateEndless(deltaSeconds) {
     while (endlessScrollOffset >= TILE) {
       endlessScrollOffset -= TILE;
       endlessWorldRowStart += 1;
-      player.row = Math.min(ROWS - 1, player.row + 1);
       rebuildEndlessRows();
     }
 
