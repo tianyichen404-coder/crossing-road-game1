@@ -27,7 +27,7 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.1.7beta2.1';
+const BUILD_TAG = '3.1.7beta2.2';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -236,22 +236,22 @@ function getEndlessRowByWorld(worldRow) {
 
 function rebuildEndlessRows() {
   endlessRows = [];
-  for (let index = 0; index < ROWS + 2; index++) {
-    const worldRow = endlessWorldRowStart + 1 - index;
+  for (let index = 0; index < ROWS + 4; index++) {
+    const worldRow = endlessWorldRowStart - index;
     const row = getEndlessRowByWorld(worldRow);
     row.worldRow = worldRow;
     endlessRows.push(row);
   }
 
-  const minKeep = endlessWorldRowStart - (ROWS + 4);
-  const maxKeep = endlessWorldRowStart + 4;
+  const minKeep = endlessWorldRowStart - (ROWS + 8);
+  const maxKeep = endlessWorldRowStart + 2;
   for (const key of Array.from(endlessRowMap.keys())) {
     if (key < minKeep || key > maxKeep) endlessRowMap.delete(key);
   }
 }
 
 function getEndlessRowY(index) {
-  return canvas.height - TILE + endlessScrollOffset - index * TILE;
+  return canvas.height - TILE - endlessScrollOffset - index * TILE;
 }
 
 function resetEndlessMode() {
@@ -521,11 +521,7 @@ function updateEndless(deltaSeconds) {
     while (endlessScrollOffset >= TILE) {
       endlessScrollOffset -= TILE;
       endlessWorldRowStart += 1;
-      player.row += 1;
-      if (player.row >= ROWS) {
-        triggerLose('你被地图卷出屏幕了。', 'scroll');
-        break;
-      }
+      player.row = Math.min(ROWS - 1, player.row + 1);
       rebuildEndlessRows();
     }
 
@@ -551,8 +547,9 @@ function updateEndless(deltaSeconds) {
       h: TILE - 8
     };
 
-    for (const row of endlessRows) {
-      const y = row.y;
+    for (let index = 0; index < endlessRows.length; index++) {
+      const row = endlessRows[index];
+      const y = getEndlessRowY(index);
       if (y < -TILE || y > canvas.height) continue;
       if (row.type === 'safe') continue;
       for (const seg of row.segments) {
