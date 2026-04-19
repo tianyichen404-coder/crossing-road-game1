@@ -27,7 +27,7 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.1.7beta2';
+const BUILD_TAG = '3.1.7beta2.1';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -108,6 +108,7 @@ let invincibleTime = 0;
 let endlessRows = [];
 let endlessRowMap = new Map();
 let endlessWorldRowStart = 0;
+let endlessScrollOffset = 0;
 let endlessScore = 0;
 let endlessCoins = 0;
 let endlessSniperCooldown = ENDLESS_SNIPE_INTERVAL;
@@ -233,13 +234,12 @@ function getEndlessRowByWorld(worldRow) {
   return row;
 }
 
-function syncEndlessRows() {
+function rebuildEndlessRows() {
   endlessRows = [];
-  for (let screenRow = 0; screenRow <= ROWS; screenRow++) {
-    const worldRow = endlessWorldRowStart + (ROWS - 1 - screenRow);
+  for (let index = 0; index < ROWS + 2; index++) {
+    const worldRow = endlessWorldRowStart + 1 - index;
     const row = getEndlessRowByWorld(worldRow);
     row.worldRow = worldRow;
-    row.y = canvas.height - (screenRow + 1) * TILE;
     endlessRows.push(row);
   }
 
@@ -250,6 +250,10 @@ function syncEndlessRows() {
   }
 }
 
+function getEndlessRowY(index) {
+  return canvas.height - TILE + endlessScrollOffset - index * TILE;
+}
+
 function resetEndlessMode() {
   resetSharedState();
   invincibleTime = ENDLESS_RESPAWN_INVINCIBLE_SECONDS;
@@ -258,6 +262,7 @@ function resetEndlessMode() {
   endlessRows = [];
   endlessRowMap = new Map();
   endlessWorldRowStart = 0;
+  endlessScrollOffset = 0;
   endlessScore = 0;
   endlessCoins = 0;
   endlessSniperCooldown = ENDLESS_SNIPE_INTERVAL;
@@ -274,7 +279,7 @@ function resetEndlessMode() {
     spawned: true,
     spawnCountdown: 0
   };
-  syncEndlessRows();
+  rebuildEndlessRows();
   statusEl.textContent = '无尽模式开始，底部出生点固定在安全路，地图会像流水线一样持续向下滚动。';
   updateEndlessHud();
 }
@@ -512,21 +517,16 @@ function updateEndless(deltaSeconds) {
       localStorage.setItem('crossyEndlessBest', String(endlessBest));
     }
 
-    let travel = deltaY;
-    while (travel > 0) {
-      const step = Math.min(travel, TILE);
-      endlessRows.forEach((row) => { row.y += step; });
-      travel -= step;
-      while (endlessRows.length && endlessRows[0].y >= canvas.height) {
-        endlessWorldRowStart += 1;
-        player.row += 1;
-        if (player.row >= ROWS) {
-          triggerLose('你被地图卷出屏幕了。', 'scroll');
-          break;
-        }
-        syncEndlessRows();
+    endlessScrollOffset += deltaY;
+    while (endlessScrollOffset >= TILE) {
+      endlessScrollOffset -= TILE;
+      endlessWorldRowStart += 1;
+      player.row += 1;
+      if (player.row >= ROWS) {
+        triggerLose('你被地图卷出屏幕了。', 'scroll');
+        break;
       }
-      if (gameOver) break;
+      rebuildEndlessRows();
     }
 
     const playerCenter = getPlayerCenter();
@@ -606,8 +606,9 @@ function drawClassicRows() {
 }
 
 function drawEndlessRows() {
-  for (const row of endlessRows) {
-    const y = row.y;
+  for (let index = 0; index < endlessRows.length; index++) {
+    const row = endlessRows[index];
+    const y = getEndlessRowY(index);
     if (y < -TILE || y > canvas.height) continue;
     if (row.type === 'safe') {
       ctx.fillStyle = '#9ae66e';
