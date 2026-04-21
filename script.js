@@ -502,7 +502,6 @@ function updateEndless(deltaSeconds) {
   if (!gameOver) {
     if (endlessStartCountdown > 0) {
       endlessStartCountdown = Math.max(0, endlessStartCountdown - deltaSeconds);
-      invincibleTime = Math.max(invincibleTime, endlessStartCountdown);
       if (sniper.shotTimer > 0) sniper.shotTimer -= deltaSeconds;
       updateEndlessHud();
       return;
