@@ -27,7 +27,7 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.1.8';
+const BUILD_TAG = '3.1.9';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -41,7 +41,7 @@ const ENDLESS_COIN_CHANCE = 0.333;
 const ENDLESS_SCROLL_GROWTH_PER_MIN = 0.15;
 const ENDLESS_SNIPE_INTERVAL = 3;
 const CLASSIC_RESPAWN_INVINCIBLE_SECONDS = 0;
-const ENDLESS_RESPAWN_INVINCIBLE_SECONDS = 3.1;
+const ENDLESS_RESPAWN_INVINCIBLE_SECONDS = 0;
 const ENDLESS_START_COUNTDOWN_SECONDS = 5;
 
 const DIFFICULTIES = {
@@ -274,13 +274,13 @@ function resetEndlessMode() {
     firing: false,
     shotTimer: 0,
     shotLine: null,
-    moveFactor: 1,
+    moveFactor: 0,
     aimSeconds: 0,
-    spawned: true,
+    spawned: false,
     spawnCountdown: 0
   };
   rebuildEndlessRows();
-  statusEl.textContent = '无尽模式开始，底部出生点固定在安全路，地图会像流水线一样持续向下滚动。';
+  statusEl.textContent = '无尽模式开始，底部出生点固定在安全路，倒数结束前不能用 W 前进，地图会像流水线一样持续向下滚动。';
   updateEndlessHud();
 }
 
@@ -374,7 +374,8 @@ function triggerWin() {
 
 function movePlayer(dx, dy) {
   if (gameOver) return;
-  const verticalAllowed = currentMode === 'classic' || currentMode === 'endless';
+  const endlessCountdownBlockingForward = currentMode === 'endless' && endlessStartCountdown > 0 && dy < 0;
+  const verticalAllowed = (currentMode === 'classic' || currentMode === 'endless') && !endlessCountdownBlockingForward;
   const nextCol = Math.max(0, Math.min(COLS - 1, player.col + dx));
   const nextRow = verticalAllowed ? Math.max(0, Math.min(ROWS - 1, player.row + dy)) : player.row;
   if (nextCol === player.col && nextRow === player.row) return;
@@ -522,21 +523,6 @@ function updateEndless(deltaSeconds) {
       endlessScrollOffset -= TILE;
       endlessWorldRowStart += 1;
       rebuildEndlessRows();
-    }
-
-    const playerCenter = getPlayerCenter();
-    const followFactor = Math.min(0.08, deltaSeconds * 0.8);
-    const sway = Math.sin(elapsedTime * 1.8) * 18;
-    sniper.x += ((playerCenter.x + sway) - sniper.x) * followFactor;
-    sniper.y += (playerCenter.y - sniper.y) * followFactor;
-    endlessSniperCooldown -= deltaSeconds;
-    if (endlessSniperCooldown <= 0) {
-      endlessSniperCooldown = ENDLESS_SNIPE_INTERVAL;
-      sniper.shotTimer = 0.22;
-      sniper.shotLine = { fromX: sniper.x, fromY: sniper.y, toX: playerCenter.x, toY: playerCenter.y };
-      if (invincibleTime <= 0 && Math.hypot(playerCenter.x - sniper.x, playerCenter.y - sniper.y) <= SNIPER_LOCK_DISTANCE) {
-        triggerLose('你被狙击手击中了。', 'sniper');
-      }
     }
 
     const playerRect = {
