@@ -29,7 +29,7 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.2.2';
+const BUILD_TAG = '3.3.0';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -39,7 +39,7 @@ const RIGHT_VEHICLE_SPRITES = ['assets-right-1.png', 'assets-right-2.png', 'asse
 const LEFT_VEHICLE_NAMES = ['核弹', '大运', '火箭'];
 const RIGHT_VEHICLE_NAMES = ['战斗机', '坦克', 'UFO'];
 const COIN_SPRITE = 'assets-coin.gif';
-const ENDLESS_BGM = 'assets-endless-bgm.mp3';
+const DEFAULT_ENDLESS_BGM = 'assets-endless-bgm.mp3';
 const ENDLESS_SCORE_PER_SEC = 1.234;
 const ENDLESS_COIN_CHANCE = 0.333;
 const ENDLESS_SCROLL_GROWTH_PER_MIN = 0.15;
@@ -66,9 +66,20 @@ const DEATH_SUBTITLE_MAP = {
 };
 
 const CHARACTERS = {
-  kunkun: { id: 'kunkun', name: '坤坤', src: PLAYER_SPRITE },
-  laoda: { id: 'laoda', name: '牢大', src: LAODA_SPRITE }
+  kunkun: {
+    id: 'kunkun',
+    name: '坤坤',
+    src: PLAYER_SPRITE,
+    bgm: DEFAULT_ENDLESS_BGM
+  },
+  laoda: {
+    id: 'laoda',
+    name: '牢大',
+    src: LAODA_SPRITE,
+    bgm: DEFAULT_ENDLESS_BGM
+  }
 };
+// 新增角色时照这个结构添加：id / name / src / bgm。图片或 BGM 暂缺时，先用坤坤图片和 DEFAULT_ENDLESS_BGM 顶替。
 const characterImages = Object.fromEntries(Object.entries(CHARACTERS).map(([id, character]) => {
   const img = new Image();
   img.src = character.src;
@@ -91,7 +102,8 @@ sniperDeathImage.src = SNIPER_DEATH_GIF;
 const defeatAudio = new Audio(DEFEAT_SFX);
 defeatAudio.preload = 'auto';
 defeatAudio.volume = 0.85;
-const endlessBgm = new Audio(ENDLESS_BGM);
+const endlessBgm = new Audio(DEFAULT_ENDLESS_BGM);
+endlessBgm.dataset.currentSrc = DEFAULT_ENDLESS_BGM;
 endlessBgm.loop = true;
 endlessBgm.preload = 'auto';
 endlessBgm.volume = 0.36;
@@ -184,7 +196,9 @@ function updateEndlessHud() {
 }
 
 function updateBgmButton() {
-  bgmToggleBtn.textContent = bgmUnavailable ? '音乐：缺文件' : (musicEnabled ? '音乐：开' : '音乐：关');
+  const character = getSelectedCharacter();
+  const label = `${character.name}BGM`;
+  bgmToggleBtn.textContent = bgmUnavailable ? `${label}：缺文件` : (musicEnabled ? `${label}：开` : `${label}：关`);
   bgmToggleBtn.classList.toggle('muted', !musicEnabled || bgmUnavailable);
 }
 
@@ -199,14 +213,37 @@ function selectCharacter(characterId) {
   selectedCharacterId = characterId;
   localStorage.setItem('crossyCharacter', selectedCharacterId);
   updateCharacterSelect();
+  prepareEndlessBgmForCharacter(true);
+  syncEndlessBgm();
+}
+
+function getSelectedCharacter() {
+  return CHARACTERS[selectedCharacterId] || CHARACTERS.kunkun;
 }
 
 function getSelectedCharacterImage() {
   return characterImages[selectedCharacterId] || characterImages.kunkun;
 }
 
+function getSelectedCharacterBgm() {
+  return getSelectedCharacter().bgm || DEFAULT_ENDLESS_BGM;
+}
+
+function prepareEndlessBgmForCharacter(reset = false) {
+  const bgmSrc = getSelectedCharacterBgm();
+  if (endlessBgm.dataset.currentSrc !== bgmSrc) {
+    stopEndlessBgm(true);
+    endlessBgm.src = bgmSrc;
+    endlessBgm.dataset.currentSrc = bgmSrc;
+    endlessBgm.load();
+  } else if (reset) {
+    stopEndlessBgm(true);
+  }
+}
+
 function playEndlessBgm() {
   if (currentMode !== 'endless' || endlessStartCountdown > 0 || !musicEnabled || gameOver || isPaused || bgmUnavailable) return;
+  prepareEndlessBgmForCharacter(false);
   endlessBgm.play().catch(() => {
     bgmUnavailable = true;
     updateBgmButton();
@@ -338,7 +375,7 @@ function getEndlessRowY(index) {
 }
 
 function resetEndlessMode() {
-  stopEndlessBgm(true);
+  prepareEndlessBgmForCharacter(true);
   resetSharedState();
   bgmUnavailable = false;
   invincibleTime = ENDLESS_RESPAWN_INVINCIBLE_SECONDS;
