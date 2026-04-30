@@ -29,7 +29,7 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.2.1';
+const BUILD_TAG = '3.2.2';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -737,17 +737,25 @@ function drawEndlessRows() {
 }
 
 function drawPlayer() {
-  const x = player.col * TILE + 2;
-  const y = player.row * TILE + 1;
+  const boxX = player.col * TILE + 2;
+  const boxY = player.row * TILE + 1;
+  const boxWidth = TILE - 4;
+  const boxHeight = TILE - 2;
   const image = getSelectedCharacterImage();
-  if (image && image.complete && image.naturalWidth > 0) ctx.drawImage(image, x, y, TILE - 4, TILE - 2);
-  else {
+  if (image && image.complete && image.naturalWidth > 0) {
+    const scale = Math.min(boxWidth / image.naturalWidth, boxHeight / image.naturalHeight);
+    const drawWidth = image.naturalWidth * scale;
+    const drawHeight = image.naturalHeight * scale;
+    const drawX = boxX + (boxWidth - drawWidth) / 2;
+    const drawY = boxY + (boxHeight - drawHeight) / 2;
+    ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+  } else {
     ctx.fillStyle = selectedCharacterId === 'laoda' ? '#f97316' : '#fde047';
-    ctx.fillRect(x, y, TILE - 4, TILE - 2);
+    ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
     ctx.fillStyle = '#111827';
     ctx.font = 'bold 12px Microsoft YaHei, Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(CHARACTERS[selectedCharacterId]?.name || '玩家', x + TILE / 2 - 2, y + TILE / 2 + 4);
+    ctx.fillText(CHARACTERS[selectedCharacterId]?.name || '玩家', boxX + TILE / 2 - 2, boxY + TILE / 2 + 4);
   }
 }
 
