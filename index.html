@@ -8,18 +8,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>过马路</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='48'%3E%F0%9F%9A%A6%3C/text%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="styles.css?v=3200" />
+  <link rel="stylesheet" href="styles.css?v=3210" />
 </head>
 <body>
   <div class="wrap">
     <section id="modeSelect" class="mode-select-screen">
       <h1>过马路</h1>
       <p class="hint">请选择游玩模式</p>
+      <div class="character-select" aria-label="角色选择区">
+        <h2>角色选择</h2>
+        <div class="character-buttons">
+          <button class="character-btn active" data-character="kunkun">
+            <img src="assets-player.png" alt="坤坤" />
+            <span>坤坤</span>
+          </button>
+          <button class="character-btn" data-character="laoda">
+            <img src="assets-laoda.png" alt="牢大" />
+            <span>牢大</span>
+          </button>
+        </div>
+      </div>
       <div class="mode-buttons">
         <button id="classicModeBtn" class="mode-btn">经典模式</button>
         <button id="endlessModeBtn" class="mode-btn endless">无尽模式</button>
       </div>
-      <div class="home-version-tag" id="homeVersionTag">v3.2.0</div>
+      <div class="home-version-tag" id="homeVersionTag">v3.2.1</div>
     </section>
 
     <section id="gameScreen" class="game-screen hidden">
@@ -70,6 +83,17 @@
             <summary>展开 / 收起更新日志</summary>
             <div class="log-scroll">
               <div class="log-block latest">
+                <div class="log-head">
+                  <h3>v3.2.1</h3>
+                  <span>2026-04-29</span>
+                </div>
+                <ul>
+                  <li>新增游戏开始前角色选择区，可选择坤坤或牢大</li>
+                  <li>当前玩家角色图片命名为“坤坤”，新角色“牢大”代码已预留</li>
+                  <li>无尽模式 BGM 改为 5 秒倒数结束后开始循环，游戏失败时结束</li>
+                </ul>
+              </div>
+              <div class="log-block">
                 <div class="log-head">
                   <h3>v3.2.0</h3>
                   <span>2026-04-29</span>
@@ -272,6 +296,6 @@
       </div>
     </section>
   </div>
-  <script src="script.js?v=3200"></script>
+  <script src="script.js?v=3210"></script>
 </body>
 </html>

@@ -22,16 +22,18 @@ const coinCountEl = document.getElementById('coinCount');
 const gameTitleEl = document.getElementById('gameTitle');
 const gameHintEl = document.getElementById('gameHint');
 const bgmToggleBtn = document.getElementById('bgmToggleBtn');
+const characterButtons = Array.from(document.querySelectorAll('.character-btn'));
 
 const COLS = 12;
 const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.2.0';
+const BUILD_TAG = '3.2.1';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
+const LAODA_SPRITE = 'assets-laoda.png';
 const LEFT_VEHICLE_SPRITES = ['assets-left-1.png', 'assets-left-2.png', 'assets-left-3.png'];
 const RIGHT_VEHICLE_SPRITES = ['assets-right-1.png', 'assets-right-2.png', 'assets-right-3.png'];
 const LEFT_VEHICLE_NAMES = ['核弹', '大运', '火箭'];
@@ -63,8 +65,15 @@ const DEATH_SUBTITLE_MAP = {
   UFO: '你被外星人带走了'
 };
 
-const playerImage = new Image();
-playerImage.src = PLAYER_SPRITE;
+const CHARACTERS = {
+  kunkun: { id: 'kunkun', name: '坤坤', src: PLAYER_SPRITE },
+  laoda: { id: 'laoda', name: '牢大', src: LAODA_SPRITE }
+};
+const characterImages = Object.fromEntries(Object.entries(CHARACTERS).map(([id, character]) => {
+  const img = new Image();
+  img.src = character.src;
+  return [id, img];
+}));
 const coinImage = new Image();
 coinImage.src = COIN_SPRITE;
 const leftVehicleImages = LEFT_VEHICLE_SPRITES.map((src) => {
@@ -91,6 +100,8 @@ let currentMode = null;
 let best = Number(localStorage.getItem('crossyBest') || 0);
 let endlessBest = Number(localStorage.getItem('crossyEndlessBest') || 0);
 let currentDifficulty = difficultyEl.value;
+let selectedCharacterId = localStorage.getItem('crossyCharacter') || 'kunkun';
+if (!CHARACTERS[selectedCharacterId]) selectedCharacterId = 'kunkun';
 let musicEnabled = localStorage.getItem('crossyEndlessBgm') !== 'off';
 bestEl.textContent = best;
 endlessBestEl.textContent = endlessBest.toFixed(3);
@@ -177,8 +188,25 @@ function updateBgmButton() {
   bgmToggleBtn.classList.toggle('muted', !musicEnabled || bgmUnavailable);
 }
 
+function updateCharacterSelect() {
+  characterButtons.forEach((button) => {
+    button.classList.toggle('active', button.dataset.character === selectedCharacterId);
+  });
+}
+
+function selectCharacter(characterId) {
+  if (!CHARACTERS[characterId]) return;
+  selectedCharacterId = characterId;
+  localStorage.setItem('crossyCharacter', selectedCharacterId);
+  updateCharacterSelect();
+}
+
+function getSelectedCharacterImage() {
+  return characterImages[selectedCharacterId] || characterImages.kunkun;
+}
+
 function playEndlessBgm() {
-  if (currentMode !== 'endless' || !musicEnabled || gameOver || isPaused || bgmUnavailable) return;
+  if (currentMode !== 'endless' || endlessStartCountdown > 0 || !musicEnabled || gameOver || isPaused || bgmUnavailable) return;
   endlessBgm.play().catch(() => {
     bgmUnavailable = true;
     updateBgmButton();
@@ -197,7 +225,7 @@ function stopEndlessBgm(reset = false) {
 }
 
 function syncEndlessBgm() {
-  if (currentMode === 'endless' && musicEnabled && !gameOver && !isPaused) playEndlessBgm();
+  if (currentMode === 'endless' && endlessStartCountdown <= 0 && musicEnabled && !gameOver && !isPaused) playEndlessBgm();
   else pauseEndlessBgm();
   updateBgmButton();
 }
@@ -500,6 +528,9 @@ if (mobileControlsEl) {
   });
 }
 
+characterButtons.forEach((button) => {
+  button.addEventListener('click', () => selectCharacter(button.dataset.character));
+});
 classicModeBtn.addEventListener('click', startClassicMode);
 endlessModeBtn.addEventListener('click', startEndlessMode);
 backToModesBtn.addEventListener('click', showModeSelect);
@@ -579,6 +610,7 @@ function updateEndless(deltaSeconds) {
   if (!gameOver) {
     if (endlessStartCountdown > 0) {
       endlessStartCountdown = Math.max(0, endlessStartCountdown - deltaSeconds);
+      if (endlessStartCountdown === 0) syncEndlessBgm();
       if (sniper.shotTimer > 0) sniper.shotTimer -= deltaSeconds;
       updateEndlessHud();
       return;
@@ -707,10 +739,15 @@ function drawEndlessRows() {
 function drawPlayer() {
   const x = player.col * TILE + 2;
   const y = player.row * TILE + 1;
-  if (playerImage.complete) ctx.drawImage(playerImage, x, y, TILE - 4, TILE - 2);
+  const image = getSelectedCharacterImage();
+  if (image && image.complete && image.naturalWidth > 0) ctx.drawImage(image, x, y, TILE - 4, TILE - 2);
   else {
-    ctx.fillStyle = '#fde047';
+    ctx.fillStyle = selectedCharacterId === 'laoda' ? '#f97316' : '#fde047';
     ctx.fillRect(x, y, TILE - 4, TILE - 2);
+    ctx.fillStyle = '#111827';
+    ctx.font = 'bold 12px Microsoft YaHei, Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(CHARACTERS[selectedCharacterId]?.name || '玩家', x + TILE / 2 - 2, y + TILE / 2 + 4);
   }
 }
 
@@ -878,5 +915,6 @@ function loop(timestamp = 0) {
   requestAnimationFrame(loop);
 }
 
+updateCharacterSelect();
 showModeSelect();
 loop();
