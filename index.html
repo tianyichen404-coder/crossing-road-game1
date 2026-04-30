@@ -7,7 +7,8 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>过马路</title>
-  <link rel="stylesheet" href="styles.css?v=3190" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='48'%3E%F0%9F%9A%A6%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css?v=3110" />
 </head>
 <body>
   <div class="wrap">
@@ -18,12 +19,12 @@
         <button id="classicModeBtn" class="mode-btn">经典模式</button>
         <button id="endlessModeBtn" class="mode-btn endless">无尽模式</button>
       </div>
-      <div class="home-version-tag" id="homeVersionTag">v3.1.9</div>
+      <div class="home-version-tag" id="homeVersionTag">v3.1.10</div>
     </section>
 
     <section id="gameScreen" class="game-screen hidden">
       <h1 id="gameTitle">过马路（经典版）</h1>
-      <p class="hint" id="gameHint">方向键 / WASD 移动，R 重新开始</p>
+      <p class="hint" id="gameHint">方向键 / WASD 移动，P 暂停，R 重新开始</p>
       <button id="backToModesBtn" class="back-btn">返回模式选择</button>
       <div class="controls" id="classicControls">
         <label for="difficulty">难度</label>
@@ -55,7 +56,10 @@
               <button data-move="down">↓</button>
               <button data-move="right">→</button>
             </div>
-            <button data-action="restart" class="restart-btn">重开</button>
+            <div class="mobile-action-row">
+              <button data-action="pause" class="pause-btn">暂停</button>
+              <button data-action="restart" class="restart-btn">重开</button>
+            </div>
           </div>
           <p id="status">小心来车，尽量往上走。</p>
         </div>
@@ -65,6 +69,17 @@
             <summary>展开 / 收起更新日志</summary>
             <div class="log-scroll">
               <div class="log-block latest">
+                <div class="log-head">
+                  <h3>v3.1.10</h3>
+                  <span>2026-04-29</span>
+                </div>
+                <ul>
+                  <li>新增 P 键暂停 / 继续，暂停时计时、车辆、地图滚动与碰撞都会冻结</li>
+                  <li>手机触控区新增暂停按钮，方便移动端中途停一下</li>
+                  <li>暂停时画面中央显示 3D 暂停提示，按 P 或按钮继续</li>
+                </ul>
+              </div>
+              <div class="log-block">
                 <div class="log-head">
                   <h3>v3.1.9</h3>
                   <span>2026-04-21</span>
@@ -245,6 +260,6 @@
       </div>
     </section>
   </div>
-  <script src="script.js?v=3190"></script>
+  <script src="script.js?v=3110"></script>
 </body>
 </html>

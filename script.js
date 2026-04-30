@@ -27,7 +27,7 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.1.9';
+const BUILD_TAG = '3.1.10';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -113,6 +113,7 @@ let endlessScore = 0;
 let endlessCoins = 0;
 let endlessSniperCooldown = ENDLESS_SNIPE_INTERVAL;
 let endlessStartCountdown = 0;
+let isPaused = false;
 
 function getDifficultyConfig() {
   return DIFFICULTIES[currentDifficulty];
@@ -129,6 +130,7 @@ function resetSharedState() {
   score = 0;
   elapsedTime = 0;
   gameOver = false;
+  isPaused = false;
   resultText = '';
   resultSubtitle = '';
   killEffect = null;
@@ -137,6 +139,7 @@ function resetSharedState() {
 
 function showModeSelect() {
   currentMode = null;
+  isPaused = false;
   modeSelectEl.classList.remove('hidden');
   gameScreenEl.classList.add('hidden');
 }
@@ -173,7 +176,7 @@ function startClassicMode() {
   classicHudEl.classList.remove('hidden');
   endlessHudEl.classList.add('hidden');
   gameTitleEl.textContent = '过马路（经典版）';
-  gameHintEl.textContent = '方向键 / WASD 移动，R 重新开始';
+  gameHintEl.textContent = '方向键 / WASD 移动，P 暂停，R 重新开始';
   resetClassicMode();
 }
 
@@ -184,7 +187,7 @@ function startEndlessMode() {
   classicHudEl.classList.add('hidden');
   endlessHudEl.classList.remove('hidden');
   gameTitleEl.textContent = '过马路（无尽模式）';
-  gameHintEl.textContent = '方向键 / WASD 或触控按钮横向躲避，努力生存并捡金币';
+  gameHintEl.textContent = '方向键 / WASD 或触控按钮横向躲避，P 暂停，努力生存并捡金币';
   resetEndlessMode();
 }
 
@@ -373,7 +376,7 @@ function triggerWin() {
 }
 
 function movePlayer(dx, dy) {
-  if (gameOver) return;
+  if (gameOver || isPaused) return;
   const endlessCountdownBlockingForward = currentMode === 'endless' && endlessStartCountdown > 0 && dy < 0;
   const verticalAllowed = (currentMode === 'classic' || currentMode === 'endless') && !endlessCountdownBlockingForward;
   const nextCol = Math.max(0, Math.min(COLS - 1, player.col + dx));
@@ -392,8 +395,18 @@ function movePlayer(dx, dy) {
 }
 
 function handleRestart() {
+  isPaused = false;
   if (currentMode === 'classic') resetClassicMode();
   else if (currentMode === 'endless') resetEndlessMode();
+}
+
+function togglePause() {
+  if (!currentMode || gameOver) return;
+  isPaused = !isPaused;
+  lastTime = 0;
+  statusEl.textContent = isPaused
+    ? '已暂停，按 P 或暂停按钮继续。'
+    : (currentMode === 'classic' ? '继续游戏，小心来车。' : '继续无尽模式，注意脚下和金币。');
 }
 
 window.addEventListener('keydown', (event) => {
@@ -403,6 +416,7 @@ window.addEventListener('keydown', (event) => {
   else if (key === 'arrowleft' || key === 'a') movePlayer(-1, 0);
   else if (key === 'arrowright' || key === 'd') movePlayer(1, 0);
   else if (key === 'r') handleRestart();
+  else if (key === 'p') togglePause();
 });
 
 if (mobileControlsEl) {
@@ -414,6 +428,7 @@ if (mobileControlsEl) {
     else if (move === 'left') movePlayer(-1, 0);
     else if (move === 'right') movePlayer(1, 0);
     else if (action === 'restart') handleRestart();
+    else if (action === 'pause') togglePause();
   };
   mobileControlsEl.querySelectorAll('button').forEach((button) => {
     button.addEventListener('click', () => handleMobileAction(button));
@@ -710,6 +725,27 @@ function drawCountdownOverlay() {
   ctx.restore();
 }
 
+function drawPauseOverlay() {
+  if (!isPaused || gameOver) return;
+  ctx.save();
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.28)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#facc15';
+  ctx.strokeStyle = '#7c2d12';
+  ctx.shadowColor = 'rgba(250, 204, 21, 0.7)';
+  ctx.shadowBlur = 18;
+  ctx.lineWidth = 8;
+  ctx.font = '900 64px Microsoft YaHei, Arial';
+  ctx.strokeText('暂停', canvas.width / 2, canvas.height / 2 - 12);
+  ctx.fillText('暂停', canvas.width / 2, canvas.height / 2 - 12);
+  ctx.font = '900 22px Microsoft YaHei, Arial';
+  ctx.lineWidth = 5;
+  ctx.strokeText('按 P 或暂停按钮继续', canvas.width / 2, canvas.height / 2 + 34);
+  ctx.fillText('按 P 或暂停按钮继续', canvas.width / 2, canvas.height / 2 + 34);
+  ctx.restore();
+}
+
 function drawResultText() {
   if (!resultText) return;
   ctx.save();
@@ -766,6 +802,7 @@ function render() {
   drawSniper();
   drawKillEffect();
   drawCountdownOverlay();
+  drawPauseOverlay();
   drawResultText();
   drawVersionTag();
 }
@@ -773,8 +810,8 @@ function render() {
 function loop(timestamp = 0) {
   const deltaSeconds = Math.min(0.05, (timestamp - lastTime) / 1000 || 0.016);
   lastTime = timestamp;
-  if (currentMode === 'classic') updateClassic(deltaSeconds);
-  else if (currentMode === 'endless') updateEndless(deltaSeconds);
+  if (!isPaused && currentMode === 'classic') updateClassic(deltaSeconds);
+  else if (!isPaused && currentMode === 'endless') updateEndless(deltaSeconds);
   render();
   requestAnimationFrame(loop);
 }
