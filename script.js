@@ -21,13 +21,14 @@ const endlessBestEl = document.getElementById('endlessBest');
 const coinCountEl = document.getElementById('coinCount');
 const gameTitleEl = document.getElementById('gameTitle');
 const gameHintEl = document.getElementById('gameHint');
+const bgmToggleBtn = document.getElementById('bgmToggleBtn');
 
 const COLS = 12;
 const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.1.10';
+const BUILD_TAG = '3.2.0';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -36,6 +37,7 @@ const RIGHT_VEHICLE_SPRITES = ['assets-right-1.png', 'assets-right-2.png', 'asse
 const LEFT_VEHICLE_NAMES = ['核弹', '大运', '火箭'];
 const RIGHT_VEHICLE_NAMES = ['战斗机', '坦克', 'UFO'];
 const COIN_SPRITE = 'assets-coin.gif';
+const ENDLESS_BGM = 'assets-endless-bgm.mp3';
 const ENDLESS_SCORE_PER_SEC = 1.234;
 const ENDLESS_COIN_CHANCE = 0.333;
 const ENDLESS_SCROLL_GROWTH_PER_MIN = 0.15;
@@ -80,11 +82,16 @@ sniperDeathImage.src = SNIPER_DEATH_GIF;
 const defeatAudio = new Audio(DEFEAT_SFX);
 defeatAudio.preload = 'auto';
 defeatAudio.volume = 0.85;
+const endlessBgm = new Audio(ENDLESS_BGM);
+endlessBgm.loop = true;
+endlessBgm.preload = 'auto';
+endlessBgm.volume = 0.36;
 
 let currentMode = null;
 let best = Number(localStorage.getItem('crossyBest') || 0);
 let endlessBest = Number(localStorage.getItem('crossyEndlessBest') || 0);
 let currentDifficulty = difficultyEl.value;
+let musicEnabled = localStorage.getItem('crossyEndlessBgm') !== 'off';
 bestEl.textContent = best;
 endlessBestEl.textContent = endlessBest.toFixed(3);
 
@@ -114,6 +121,7 @@ let endlessCoins = 0;
 let endlessSniperCooldown = ENDLESS_SNIPE_INTERVAL;
 let endlessStartCountdown = 0;
 let isPaused = false;
+let bgmUnavailable = false;
 
 function getDifficultyConfig() {
   return DIFFICULTIES[currentDifficulty];
@@ -140,6 +148,8 @@ function resetSharedState() {
 function showModeSelect() {
   currentMode = null;
   isPaused = false;
+  stopEndlessBgm(true);
+  bgmToggleBtn.classList.add('hidden');
   modeSelectEl.classList.remove('hidden');
   gameScreenEl.classList.add('hidden');
 }
@@ -162,6 +172,44 @@ function updateEndlessHud() {
   coinCountEl.textContent = String(endlessCoins);
 }
 
+function updateBgmButton() {
+  bgmToggleBtn.textContent = bgmUnavailable ? '音乐：缺文件' : (musicEnabled ? '音乐：开' : '音乐：关');
+  bgmToggleBtn.classList.toggle('muted', !musicEnabled || bgmUnavailable);
+}
+
+function playEndlessBgm() {
+  if (currentMode !== 'endless' || !musicEnabled || gameOver || isPaused || bgmUnavailable) return;
+  endlessBgm.play().catch(() => {
+    bgmUnavailable = true;
+    updateBgmButton();
+  });
+}
+
+function pauseEndlessBgm() {
+  endlessBgm.pause();
+}
+
+function stopEndlessBgm(reset = false) {
+  pauseEndlessBgm();
+  if (reset) {
+    try { endlessBgm.currentTime = 0; } catch {}
+  }
+}
+
+function syncEndlessBgm() {
+  if (currentMode === 'endless' && musicEnabled && !gameOver && !isPaused) playEndlessBgm();
+  else pauseEndlessBgm();
+  updateBgmButton();
+}
+
+function toggleEndlessBgm() {
+  musicEnabled = !musicEnabled;
+  localStorage.setItem('crossyEndlessBgm', musicEnabled ? 'on' : 'off');
+  bgmUnavailable = false;
+  if (!musicEnabled) stopEndlessBgm(false);
+  syncEndlessBgm();
+}
+
 function randomSpawnPoint() {
   return {
     x: 30 + Math.random() * (canvas.width - 60),
@@ -171,10 +219,12 @@ function randomSpawnPoint() {
 
 function startClassicMode() {
   currentMode = 'classic';
+  stopEndlessBgm(true);
   showGameScreen();
   classicControlsEl.classList.remove('hidden');
   classicHudEl.classList.remove('hidden');
   endlessHudEl.classList.add('hidden');
+  bgmToggleBtn.classList.add('hidden');
   gameTitleEl.textContent = '过马路（经典版）';
   gameHintEl.textContent = '方向键 / WASD 移动，P 暂停，R 重新开始';
   resetClassicMode();
@@ -186,9 +236,11 @@ function startEndlessMode() {
   classicControlsEl.classList.add('hidden');
   classicHudEl.classList.add('hidden');
   endlessHudEl.classList.remove('hidden');
+  bgmToggleBtn.classList.remove('hidden');
   gameTitleEl.textContent = '过马路（无尽模式）';
   gameHintEl.textContent = '方向键 / WASD 或触控按钮横向躲避，P 暂停，努力生存并捡金币';
   resetEndlessMode();
+  syncEndlessBgm();
 }
 
 function resetClassicMode() {
@@ -258,7 +310,9 @@ function getEndlessRowY(index) {
 }
 
 function resetEndlessMode() {
+  stopEndlessBgm(true);
   resetSharedState();
+  bgmUnavailable = false;
   invincibleTime = ENDLESS_RESPAWN_INVINCIBLE_SECONDS;
   player = { col: Math.floor(COLS / 2), row: ROWS - 1 };
   cars = [];
@@ -285,6 +339,7 @@ function resetEndlessMode() {
   rebuildEndlessRows();
   statusEl.textContent = '无尽模式开始，底部出生点固定在安全路，倒数结束前不能用 W 前进，地图会像流水线一样持续向下滚动。';
   updateEndlessHud();
+  updateBgmButton();
 }
 
 function buildClassicCars() {
@@ -350,6 +405,7 @@ function triggerLose(message, cause = 'sniper') {
     ? '你太慢了。'
     : (DEATH_SUBTITLE_MAP[cause] || '你被创飞了');
   gameOver = true;
+  if (currentMode === 'endless') stopEndlessBgm(true);
   resultText = currentMode === 'endless' ? '游戏结束' : '失败';
   resultSubtitle = currentMode === 'endless'
     ? `${endlessSubtitle}\n分数 ${endlessScore.toFixed(3)} | 时间 ${elapsedTime.toFixed(2)}s | 金币 ${endlessCoins} | 最高分 ${endlessBest.toFixed(3)}`
@@ -392,12 +448,16 @@ function movePlayer(dx, dy) {
   }
   player.row = nextRow;
   if (currentMode === 'classic') updateClassicHud();
+  if (currentMode === 'endless') syncEndlessBgm();
 }
 
 function handleRestart() {
   isPaused = false;
   if (currentMode === 'classic') resetClassicMode();
-  else if (currentMode === 'endless') resetEndlessMode();
+  else if (currentMode === 'endless') {
+    resetEndlessMode();
+    syncEndlessBgm();
+  }
 }
 
 function togglePause() {
@@ -407,6 +467,7 @@ function togglePause() {
   statusEl.textContent = isPaused
     ? '已暂停，按 P 或暂停按钮继续。'
     : (currentMode === 'classic' ? '继续游戏，小心来车。' : '继续无尽模式，注意脚下和金币。');
+  syncEndlessBgm();
 }
 
 window.addEventListener('keydown', (event) => {
@@ -442,6 +503,7 @@ if (mobileControlsEl) {
 classicModeBtn.addEventListener('click', startClassicMode);
 endlessModeBtn.addEventListener('click', startEndlessMode);
 backToModesBtn.addEventListener('click', showModeSelect);
+bgmToggleBtn.addEventListener('click', toggleEndlessBgm);
 difficultyEl.addEventListener('change', () => {
   currentDifficulty = difficultyEl.value;
   if (currentMode === 'classic') resetClassicMode();

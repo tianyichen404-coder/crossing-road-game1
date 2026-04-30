@@ -8,7 +8,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>过马路</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='48'%3E%F0%9F%9A%A6%3C/text%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="styles.css?v=3110" />
+  <link rel="stylesheet" href="styles.css?v=3200" />
 </head>
 <body>
   <div class="wrap">
@@ -19,13 +19,14 @@
         <button id="classicModeBtn" class="mode-btn">经典模式</button>
         <button id="endlessModeBtn" class="mode-btn endless">无尽模式</button>
       </div>
-      <div class="home-version-tag" id="homeVersionTag">v3.1.10</div>
+      <div class="home-version-tag" id="homeVersionTag">v3.2.0</div>
     </section>
 
     <section id="gameScreen" class="game-screen hidden">
       <h1 id="gameTitle">过马路（经典版）</h1>
       <p class="hint" id="gameHint">方向键 / WASD 移动，P 暂停，R 重新开始</p>
       <button id="backToModesBtn" class="back-btn">返回模式选择</button>
+      <button id="bgmToggleBtn" class="music-btn hidden">音乐：开</button>
       <div class="controls" id="classicControls">
         <label for="difficulty">难度</label>
         <select id="difficulty">
@@ -69,6 +70,17 @@
             <summary>展开 / 收起更新日志</summary>
             <div class="log-scroll">
               <div class="log-block latest">
+                <div class="log-head">
+                  <h3>v3.2.0</h3>
+                  <span>2026-04-29</span>
+                </div>
+                <ul>
+                  <li>无尽模式新增默认 BGM，进入无尽模式后自动播放</li>
+                  <li>BGM 会跟随暂停、死亡、重开与返回模式选择正确暂停或重置</li>
+                  <li>新增音乐开关按钮，可手动开启 / 关闭无尽模式音乐</li>
+                </ul>
+              </div>
+              <div class="log-block">
                 <div class="log-head">
                   <h3>v3.1.10</h3>
                   <span>2026-04-29</span>
@@ -260,6 +272,6 @@
       </div>
     </section>
   </div>
-  <script src="script.js?v=3110"></script>
+  <script src="script.js?v=3200"></script>
 </body>
 </html>
