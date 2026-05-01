@@ -164,8 +164,12 @@ h1 { margin: 0; }
 }
 .canvas-stage {
   position: relative;
-  width: fit-content;
+  display: inline-grid;
   max-width: 100%;
+}
+.canvas-stage > canvas,
+.canvas-stage > .endless-hud {
+  grid-area: 1 / 1;
 }
 .hud {
   display: flex;
@@ -177,9 +181,7 @@ h1 { margin: 0; }
 .endless-hud {
   display: flex;
   flex-direction: column;
-  position: absolute;
-  right: 8px;
-  top: 8px;
+  position: relative;
   gap: 2px;
   z-index: 5;
   pointer-events: none;
@@ -187,6 +189,9 @@ h1 { margin: 0; }
   transform-origin: top right;
   align-items: flex-end;
   text-align: right;
+  justify-self: end;
+  align-self: start;
+  margin: 8px;
 }
 .hud-3d {
   font-size: 18px;
