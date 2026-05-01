@@ -30,10 +30,7 @@ const TILE = 48;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const ENDLESS_SAFE_ROWS_PER_ROAD = 3;
 const ENDLESS_ROAD_PATTERN = ENDLESS_SAFE_ROWS_PER_ROAD + 1;
-const DEFAULT_PLAYER_RENDER_WIDTH = TILE + 18;
-const DEFAULT_PLAYER_RENDER_HEIGHT = TILE + 16;
-const KUNKUN_RENDER_WIDTH = TILE + 10;
-const KUNKUN_RENDER_HEIGHT = TILE + 8;
+const PLAYER_RENDER_HEIGHT = TILE * 2;
 const SNIPER_LOCK_DISTANCE = 10;
 const BUILD_TAG = '3.3.3';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
@@ -77,20 +74,16 @@ const CHARACTERS = {
     id: 'kunkun',
     name: '坤坤',
     src: PLAYER_SPRITE,
-    bgm: KUNKUN_ENDLESS_BGM,
-    renderWidth: KUNKUN_RENDER_WIDTH,
-    renderHeight: KUNKUN_RENDER_HEIGHT
+    bgm: KUNKUN_ENDLESS_BGM
   },
   laoda: {
     id: 'laoda',
     name: '牢大',
     src: LAODA_SPRITE,
-    bgm: DEFAULT_ENDLESS_BGM,
-    renderWidth: DEFAULT_PLAYER_RENDER_WIDTH,
-    renderHeight: DEFAULT_PLAYER_RENDER_HEIGHT
+    bgm: DEFAULT_ENDLESS_BGM
   }
 };
-// 新增角色时照这个结构添加：id / name / src / bgm / renderWidth / renderHeight。图片或 BGM 暂缺时，先用坤坤图片和 DEFAULT_ENDLESS_BGM 顶替。
+// 新增角色时照这个结构添加：id / name / src / bgm。图片或 BGM 暂缺时，先用坤坤图片和 DEFAULT_ENDLESS_BGM 顶替。
 const characterImages = Object.fromEntries(Object.entries(CHARACTERS).map(([id, character]) => {
   const img = new Image();
   img.src = character.src;
@@ -787,26 +780,26 @@ function drawEndlessRows() {
 function drawPlayer() {
   const character = getSelectedCharacter();
   const centerX = player.col * TILE + TILE / 2;
-  const centerY = player.row * TILE + TILE / 2 + 2;
-  const boxWidth = character.renderWidth || DEFAULT_PLAYER_RENDER_WIDTH;
-  const boxHeight = character.renderHeight || DEFAULT_PLAYER_RENDER_HEIGHT;
-  const boxX = centerX - boxWidth / 2;
-  const boxY = centerY - boxHeight / 2;
+  const tileBottom = (player.row + 1) * TILE - 2;
   const image = getSelectedCharacterImage();
   if (image && image.complete && image.naturalWidth > 0) {
-    const scale = Math.min(boxWidth / image.naturalWidth, boxHeight / image.naturalHeight);
+    const scale = PLAYER_RENDER_HEIGHT / image.naturalHeight;
     const drawWidth = image.naturalWidth * scale;
-    const drawHeight = image.naturalHeight * scale;
-    const drawX = boxX + (boxWidth - drawWidth) / 2;
-    const drawY = boxY + (boxHeight - drawHeight) / 2;
+    const drawHeight = PLAYER_RENDER_HEIGHT;
+    const drawX = centerX - drawWidth / 2;
+    const drawY = tileBottom - drawHeight;
     ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
   } else {
+    const boxWidth = TILE;
+    const boxHeight = PLAYER_RENDER_HEIGHT;
+    const boxX = centerX - boxWidth / 2;
+    const boxY = tileBottom - boxHeight;
     ctx.fillStyle = selectedCharacterId === 'laoda' ? '#f97316' : '#fde047';
     ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
     ctx.fillStyle = '#111827';
     ctx.font = 'bold 12px Microsoft YaHei, Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(character?.name || '玩家', centerX, centerY + 4);
+    ctx.fillText(character?.name || '玩家', centerX, boxY + boxHeight / 2 + 4);
   }
 }
 
