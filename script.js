@@ -30,10 +30,12 @@ const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const ENDLESS_SAFE_ROWS_PER_ROAD = 3;
 const ENDLESS_ROAD_PATTERN = ENDLESS_SAFE_ROWS_PER_ROAD + 1;
-const PLAYER_RENDER_WIDTH = TILE + 14;
-const PLAYER_RENDER_HEIGHT = TILE + 12;
+const DEFAULT_PLAYER_RENDER_WIDTH = TILE + 14;
+const DEFAULT_PLAYER_RENDER_HEIGHT = TILE + 12;
+const KUNKUN_RENDER_WIDTH = TILE + 6;
+const KUNKUN_RENDER_HEIGHT = TILE + 4;
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.3.2';
+const BUILD_TAG = '3.3.3';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -75,16 +77,20 @@ const CHARACTERS = {
     id: 'kunkun',
     name: '坤坤',
     src: PLAYER_SPRITE,
-    bgm: KUNKUN_ENDLESS_BGM
+    bgm: KUNKUN_ENDLESS_BGM,
+    renderWidth: KUNKUN_RENDER_WIDTH,
+    renderHeight: KUNKUN_RENDER_HEIGHT
   },
   laoda: {
     id: 'laoda',
     name: '牢大',
     src: LAODA_SPRITE,
-    bgm: DEFAULT_ENDLESS_BGM
+    bgm: DEFAULT_ENDLESS_BGM,
+    renderWidth: DEFAULT_PLAYER_RENDER_WIDTH,
+    renderHeight: DEFAULT_PLAYER_RENDER_HEIGHT
   }
 };
-// 新增角色时照这个结构添加：id / name / src / bgm。图片或 BGM 暂缺时，先用坤坤图片和 DEFAULT_ENDLESS_BGM 顶替。
+// 新增角色时照这个结构添加：id / name / src / bgm / renderWidth / renderHeight。图片或 BGM 暂缺时，先用坤坤图片和 DEFAULT_ENDLESS_BGM 顶替。
 const characterImages = Object.fromEntries(Object.entries(CHARACTERS).map(([id, character]) => {
   const img = new Image();
   img.src = character.src;
@@ -779,10 +785,11 @@ function drawEndlessRows() {
 }
 
 function drawPlayer() {
+  const character = getSelectedCharacter();
   const centerX = player.col * TILE + TILE / 2;
   const centerY = player.row * TILE + TILE / 2 + 2;
-  const boxWidth = PLAYER_RENDER_WIDTH;
-  const boxHeight = PLAYER_RENDER_HEIGHT;
+  const boxWidth = character.renderWidth || DEFAULT_PLAYER_RENDER_WIDTH;
+  const boxHeight = character.renderHeight || DEFAULT_PLAYER_RENDER_HEIGHT;
   const boxX = centerX - boxWidth / 2;
   const boxY = centerY - boxHeight / 2;
   const image = getSelectedCharacterImage();
@@ -799,7 +806,7 @@ function drawPlayer() {
     ctx.fillStyle = '#111827';
     ctx.font = 'bold 12px Microsoft YaHei, Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(CHARACTERS[selectedCharacterId]?.name || '玩家', centerX, centerY + 4);
+    ctx.fillText(character?.name || '玩家', centerX, centerY + 4);
   }
 }
 
