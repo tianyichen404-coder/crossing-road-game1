@@ -162,6 +162,11 @@ h1 { margin: 0; }
   gap: 10px;
   position: relative;
 }
+.canvas-stage {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+}
 .hud {
   display: flex;
   gap: 20px;
@@ -210,6 +215,7 @@ h1 { margin: 0; }
 .log-block.latest { background: linear-gradient(135deg, rgba(255, 244, 180, 0.95), rgba(255, 224, 130, 0.95)); border: 2px solid #f59e0b; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.22); }
 .log-block ul { margin: 0; padding-left: 18px; }
 canvas {
+  display: block;
   border: 4px solid #1f2937;
   border-radius: 12px;
   background: #9ae66e;
