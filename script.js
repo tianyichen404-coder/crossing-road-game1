@@ -477,7 +477,7 @@ function triggerLose(message, cause = 'sniper') {
   if (currentMode === 'endless') stopEndlessBgm(true);
   resultText = currentMode === 'endless' ? '游戏结束' : '失败';
   resultSubtitle = currentMode === 'endless'
-    ? `${endlessSubtitle}\n分数 ${endlessScore.toFixed(3)} | 时间 ${elapsedTime.toFixed(2)}s | 金币 ${endlessCoins} | 最高分 ${endlessBest.toFixed(3)}`
+    ? endlessSubtitle
     : (DEATH_SUBTITLE_MAP[cause] || '你被创飞了');
   resultStyle = 'lose';
   statusEl.textContent = message;
