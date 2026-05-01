@@ -29,7 +29,7 @@ const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.3.0';
+const BUILD_TAG = '3.3.1';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -40,6 +40,7 @@ const LEFT_VEHICLE_NAMES = ['核弹', '大运', '火箭'];
 const RIGHT_VEHICLE_NAMES = ['战斗机', '坦克', 'UFO'];
 const COIN_SPRITE = 'assets-coin.gif';
 const DEFAULT_ENDLESS_BGM = 'assets-endless-bgm.mp3';
+const KUNKUN_ENDLESS_BGM = 'assets-kunkun-bgm.mp3';
 const ENDLESS_SCORE_PER_SEC = 1.234;
 const ENDLESS_COIN_CHANCE = 0.333;
 const ENDLESS_SCROLL_GROWTH_PER_MIN = 0.15;
@@ -70,7 +71,7 @@ const CHARACTERS = {
     id: 'kunkun',
     name: '坤坤',
     src: PLAYER_SPRITE,
-    bgm: DEFAULT_ENDLESS_BGM
+    bgm: KUNKUN_ENDLESS_BGM
   },
   laoda: {
     id: 'laoda',
