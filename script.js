@@ -32,7 +32,7 @@ const ENDLESS_SAFE_ROWS_PER_ROAD = 3;
 const ENDLESS_ROAD_PATTERN = ENDLESS_SAFE_ROWS_PER_ROAD + 1;
 const PLAYER_RENDER_HEIGHT = TILE * 2;
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.3.3';
+const BUILD_TAG = '3.3.4';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -115,12 +115,14 @@ endlessBgm.volume = 0.36;
 let currentMode = null;
 let best = Number(localStorage.getItem('crossyBest') || 0);
 let endlessBest = Number(localStorage.getItem('crossyEndlessBest') || 0);
+let totalCoins = Number(localStorage.getItem('crossyTotalCoins') || 0);
 let currentDifficulty = difficultyEl.value;
 let selectedCharacterId = localStorage.getItem('crossyCharacter') || 'kunkun';
 if (!CHARACTERS[selectedCharacterId]) selectedCharacterId = 'kunkun';
 let musicEnabled = localStorage.getItem('crossyEndlessBgm') !== 'off';
 bestEl.textContent = best;
 endlessBestEl.textContent = endlessBest.toFixed(3);
+coinCountEl.textContent = String(totalCoins);
 
 const classicLaneTypes = Array.from({ length: ROWS }, (_, row) => {
   if (SAFE_ROWS.has(row)) return 'safe';
@@ -196,7 +198,7 @@ function updateEndlessHud() {
   endlessTimerEl.textContent = `${elapsedTime.toFixed(2)}s`;
   endlessScoreEl.textContent = endlessScore.toFixed(3);
   endlessBestEl.textContent = endlessBest.toFixed(3);
-  coinCountEl.textContent = String(endlessCoins);
+  coinCountEl.textContent = String(totalCoins);
 }
 
 function updateBgmButton() {
@@ -700,6 +702,8 @@ function updateEndless(deltaSeconds) {
         if (playerRect.x < coinX + 20 && playerRect.x + playerRect.w > coinX && playerRect.y < coinY + 20 && playerRect.y + playerRect.h > coinY) {
           row.coin.collected = true;
           endlessCoins += 1;
+          totalCoins += 1;
+          localStorage.setItem('crossyTotalCoins', String(totalCoins));
         }
       }
     }
