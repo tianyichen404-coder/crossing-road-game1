@@ -26,7 +26,7 @@ const characterButtons = Array.from(document.querySelectorAll('.character-btn'))
 
 const COLS = 12;
 const ROWS = 16;
-const TILE = 40;
+const TILE = 48;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
 const ENDLESS_SAFE_ROWS_PER_ROAD = 3;
 const ENDLESS_ROAD_PATTERN = ENDLESS_SAFE_ROWS_PER_ROAD + 1;
