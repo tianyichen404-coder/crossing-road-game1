@@ -173,15 +173,15 @@ h1 { margin: 0; }
   display: flex;
   flex-direction: column;
   position: absolute;
-  left: 50%;
-  top: calc(50% + 26px);
-  gap: 4px;
+  right: 8px;
+  top: 8px;
+  gap: 2px;
   z-index: 5;
   pointer-events: none;
-  transform: translateX(-50%) scale(0.82);
-  transform-origin: top center;
-  align-items: center;
-  text-align: center;
+  transform: scale(0.72);
+  transform-origin: top right;
+  align-items: flex-end;
+  text-align: right;
 }
 .hud-3d {
   font-size: 18px;
