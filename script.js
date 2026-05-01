@@ -28,8 +28,12 @@ const COLS = 12;
 const ROWS = 16;
 const TILE = 40;
 const SAFE_ROWS = new Set([0, 1, ROWS - 1]);
+const ENDLESS_SAFE_ROWS_PER_ROAD = 3;
+const ENDLESS_ROAD_PATTERN = ENDLESS_SAFE_ROWS_PER_ROAD + 1;
+const PLAYER_RENDER_WIDTH = TILE + 14;
+const PLAYER_RENDER_HEIGHT = TILE + 12;
 const SNIPER_LOCK_DISTANCE = 10;
-const BUILD_TAG = '3.3.1';
+const BUILD_TAG = '3.3.2';
 const SNIPER_DEATH_GIF = 'assets-sniper-death.gif';
 const DEFEAT_SFX = 'assets-defeat-sfx.mp3';
 const PLAYER_SPRITE = 'assets-player.png';
@@ -336,7 +340,7 @@ function resetClassicMode() {
 }
 
 function getEndlessRowType(worldRow) {
-  return ((worldRow % 3) + 3) % 3 === 2 ? 'road' : 'safe';
+  return ((worldRow % ENDLESS_ROAD_PATTERN) + ENDLESS_ROAD_PATTERN) % ENDLESS_ROAD_PATTERN === ENDLESS_SAFE_ROWS_PER_ROAD ? 'road' : 'safe';
 }
 
 function createEndlessRowForWorld(worldRow) {
@@ -775,10 +779,12 @@ function drawEndlessRows() {
 }
 
 function drawPlayer() {
-  const boxX = player.col * TILE + 2;
-  const boxY = player.row * TILE + 1;
-  const boxWidth = TILE - 4;
-  const boxHeight = TILE - 2;
+  const centerX = player.col * TILE + TILE / 2;
+  const centerY = player.row * TILE + TILE / 2 + 2;
+  const boxWidth = PLAYER_RENDER_WIDTH;
+  const boxHeight = PLAYER_RENDER_HEIGHT;
+  const boxX = centerX - boxWidth / 2;
+  const boxY = centerY - boxHeight / 2;
   const image = getSelectedCharacterImage();
   if (image && image.complete && image.naturalWidth > 0) {
     const scale = Math.min(boxWidth / image.naturalWidth, boxHeight / image.naturalHeight);
@@ -793,7 +799,7 @@ function drawPlayer() {
     ctx.fillStyle = '#111827';
     ctx.font = 'bold 12px Microsoft YaHei, Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(CHARACTERS[selectedCharacterId]?.name || '玩家', boxX + TILE / 2 - 2, boxY + TILE / 2 + 4);
+    ctx.fillText(CHARACTERS[selectedCharacterId]?.name || '玩家', centerX, centerY + 4);
   }
 }
 
